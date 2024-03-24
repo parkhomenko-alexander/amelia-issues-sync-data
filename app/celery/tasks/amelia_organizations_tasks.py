@@ -55,7 +55,6 @@ async def sync_ficilities():
     logger.info(msg) 
     return msg
 
-
 @celery_app.task()
 @async_to_sync
 async def sync_companies():
@@ -273,5 +272,4 @@ async def sync_users():
     
     logger.info("Users were synchronized")
     return
-
 

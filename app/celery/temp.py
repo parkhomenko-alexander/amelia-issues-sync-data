@@ -169,4 +169,178 @@ async def sync_current_issues():
     logger.info("Current issues were synchronized")
     return
 
-asd =  asyncio.get_event_loop().run_until_complete(sync_current_issues())
+
+async def sync_rooms():
+    """
+        Get rooms
+    """
+
+    uow = SqlAlchemyUnitOfWork()
+
+    amelia_api: AmeliaApi = AmeliaApi()
+    amelia_api.auth()
+
+    params = amelia_api.create_json_for_request(APIGrids.ROOMS)
+    response: Response | None = amelia_api.get(APIRoutes.ROOMS_WITH_QUERY, params=params)
+    if response is None:
+        msg = "Rooms response is none"
+        logger.error(msg)
+        return msg
+    
+    response_data: ReturnTypeFromJsonQuery[RoomPostSchema] = handle_response_of_json_query(response, RoomPostSchema)
+    pages: int = amelia_api.get_count_of_pages(response_data)
+    building_ext_id_id_mapped: dict[int, int] = await BuildingService.get_external_id_mapping(uow)
+    floors_ext_id_id_mapped: dict[int, int] = await FloorService.get_external_id_mapping(uow)
+    facilities_name_id_mapped: dict[str, int] = await FacilityService.get_title_id_mapping(uow)
+
+    logger.info("Rooms are synchronize")
+    try:
+        room_service = RoomService(uow)
+
+        for i in range(1, pages):
+            params = amelia_api.create_json_for_request(APIGrids.ROOMS, i)
+            response = amelia_api.get(APIRoutes.ROOMS_WITH_QUERY, params=params)
+
+            if response is None:
+                msg = "Rooms response is none"
+                logger.error(msg)
+                return msg
+    
+            response_data = handle_response_of_json_query(response, RoomPostSchema)
+
+            rooms: list[RoomPostSchema] = []
+            for s in response_data.data:
+                s.building_id = building_ext_id_id_mapped[s.building_id]
+                s.floor_id = floors_ext_id_id_mapped[s.floor_id]
+                s.facility_id = facilities_name_id_mapped[s.facility_title]
+                rooms.append(s)
+
+            external_ids = [e.external_id for e in rooms]
+            existing_external_ids = await room_service.get_existing_external_ids(external_ids)
+            elements_to_insert = [element for element in rooms if element.external_id not in existing_external_ids]
+            element_to_update = [element for element in rooms if element.external_id in existing_external_ids]
+            if elements_to_insert != []:
+                await room_service.bulk_insert(elements_to_insert) 
+            if element_to_update != []:
+                await room_service.bulk_update(element_to_update) 
+
+    except Exception as e:
+        logger.exception(f"Some error occurred: {e}")
+        return e
+    
+    logger.info("Rooms were synchronized")
+    return
+
+
+
+
+async def sync_archive():
+    """
+    Get archive
+    """
+
+    uow = SqlAlchemyUnitOfWork()
+
+    amelia_api: AmeliaApi = AmeliaApi()
+    amelia_api.auth()
+
+    params = amelia_api.create_json_for_request(APIGrids.ARCHIVE_ISSUES)
+    response: Response | None = amelia_api.get(APIRoutes.ARCHIVE_ISSUES_WITH_QUERY, params=params)
+    if response is None:
+        msg = "Archive issues response is none"
+        logger.error(msg)
+        return msg
+    
+    response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response, IssuePostSchema)
+    pages: int = amelia_api.get_count_of_pages(response_data)
+
+    company_title_id_mapped: dict[str, int] = await CompanyService.get_title_id_mapping(uow)
+    service_work_categories_mapped: dict[int, dict[str, int]] = await ServiceService.get_mapping_service_id_work_categories(uow)
+    building_title_id_mapped: dict[str, int] = await BuildingService.get_title_id_mapping(uow)
+    priority_title_id_mapped: dict[str, int] = await PriorityService.get_title_id_mapping(uow)
+    exucutor_fullname_id_mapped: dict[str, int] = await UserService.get_fullname_id_mapping_by_roles(
+        uow, 
+        ["admin", "director", "chief_engineer", "dispatcher", "executor", "dispatcher/executor"]
+    )
+    building_rooms_mapping: dict[str, dict[str, int]] = await BuildingService.get_building_rooms_mapping(uow)
+    workflow_extenal_id_id_mapping: dict[int, int] = await WorkflowService.get_external_id_id_mapping(uow)
+    users_ids: set[int] = await UserService.get_users_ids(uow)
+    
+
+    logger.info("Archive issues are synchronize")
+    try:
+        issue_service = IssueService(uow)
+        issues: list[IssuePostSchema] = []
+
+        for i in range(1, pages):
+            logger.info(f"Page: {i}")
+
+            params = amelia_api.create_json_for_request(APIGrids.ARCHIVE_ISSUES, i)
+            response = amelia_api.get(APIRoutes.ARCHIVE_ISSUES_WITH_QUERY, params=params)
+
+            if response is None:
+                msg = "Archive issues response is none"
+                logger.error(msg)
+                return msg
+    
+            response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response, IssuePostSchema)
+
+            for iss in response_data.data:
+                building_title = iss.building_title.split("/")[0][:-1]
+                if iss.room_title is None:
+                    room_id = None
+                else:
+                    room_id = building_rooms_mapping[building_title].get(iss.room_title)
+                
+                # на проде не будет проскакивать, для разработки, чтобы не ловить ошибку
+                if iss.declarer_id not in users_ids: 
+                    iss.declarer_id = None
+            
+                iss.company_id = None if iss.company_name is None else company_title_id_mapped[iss.company_name]
+                iss.work_category_id = service_work_categories_mapped[iss.service_id][iss.work_category_title]
+                
+                iss.building_id = building_title_id_mapped[building_title]
+
+                iss.priority_id = None if iss.priority_title is None else priority_title_id_mapped.get(iss.priority_title, None)
+                iss.executor_id = None if iss.executor_full_name is None else exucutor_fullname_id_mapped.get(iss.executor_full_name, None)
+
+                iss.workflow_id = workflow_extenal_id_id_mapping[iss.workflow_id]
+                iss.room_id = room_id
+
+                issues.append(iss)
+                # logger.info(iss)
+            external_ids = [e.external_id for e in issues]
+            
+            if i % 50 == 0 and i != 0:
+                if external_ids == []:
+                    continue
+                existing_external_ids = await issue_service.get_existing_external_ids(external_ids)
+
+                elements_to_insert = [element for element in issues if element.external_id not in existing_external_ids]
+                element_to_update = [element for element in issues if element.external_id in existing_external_ids]
+                if elements_to_insert != []:
+                    await issue_service.bulk_insert(elements_to_insert) 
+                if element_to_update != []:
+                    await issue_service.bulk_update(element_to_update)
+                issues = []
+                
+        external_ids = [e.external_id for e in issues]
+        if external_ids != []:
+            existing_external_ids = await issue_service.get_existing_external_ids(external_ids)
+
+            elements_to_insert = [element for element in issues if element.external_id not in existing_external_ids]
+            element_to_update = [element for element in issues if element.external_id in existing_external_ids]
+            if elements_to_insert != []:
+                await issue_service.bulk_insert(elements_to_insert) 
+            if element_to_update != []:
+                await issue_service.bulk_update(element_to_update)
+
+    except Exception as e:
+        logger.exception(f"Some error occurred: {e}")
+        return e
+    
+    logger.info("Archive issues were synchronized")
+    await sync_archive_statuses()
+    return
+
+asd =  asyncio.get_event_loop().run_until_complete(sync_archive())

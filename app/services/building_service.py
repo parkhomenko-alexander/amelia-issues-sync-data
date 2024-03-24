@@ -53,6 +53,16 @@ class BuildingService():
                 buildings_title_id_mapped[b.title] = b.id
             return buildings_title_id_mapped
     
+    @staticmethod
+    async def get_external_id_mapping(uow: AbstractUnitOfWork) -> dict[int, int]:
+        async with uow:
+            res = await uow.buildings_repo.get_all()
+            mapping = {}
+            for f in res:
+                mapping[f.external_id] = f.id
+
+            return mapping
+        
     @staticmethod  
     async def get_building_rooms_mapping(uow: AbstractUnitOfWork) -> dict[str, dict[str, int]]:
         async with uow:
