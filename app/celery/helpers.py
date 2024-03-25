@@ -5,6 +5,8 @@ from pydantic import BaseModel
 
 from requests import Response
 
+from app.schemas.tech_passport_schemas import TechPassportSchema
+
 
 def async_to_sync(task_func):
     @wraps(task_func)
@@ -42,4 +44,28 @@ def handle_response_of_path_params(response: Response, model: Type[T]) -> Return
     """
 
     return ReturnTypePathParams[model](data=response.json())
+
+def handle_response_of_tech_passports(response: Response, model: Type[TechPassportSchema], room_id) -> TechPassportSchema:
+    """
+        Handling request status and return data
+    """
+    response_json = response.json()
+    fields = response_json["fields"]
+    tech_passport = TechPassportSchema(
+        title = fields[0]["value"],
+        object_view = fields[7]["value"],
+        object_class = fields[8]["value"],
+        object_type = fields[9]["value"],
+        organization_3lvl = fields[17]["value"],
+        square = fields[21]["value"],
+        number_study_places = fields[28]["value"],
+
+        company_id = fields[1]["value"],
+        organization_2lvl = fields[1]["value"],
+        floor_id = fields[2]["value"],
+
+        external_id=room_id
+    )
+
+    return tech_passport
 

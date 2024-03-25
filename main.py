@@ -7,9 +7,8 @@ from config import config
 from app.db import (
     Base, db, Building, Company, 
     Facility, Floor, Issue, 
-    Priority, RoomTechPassports, 
-    Room, Service, Status, 
-    StatusHistory, User, WorkCategory, Workflow
+    Priority, Room, Service, Status, 
+    StatusHistory, User, WorkCategory, Workflow, TechPassport
 )
 
 from app.api_v1 import router as router_v1

@@ -12,14 +12,14 @@ from app.repositories import (
     FloorRepository,
     IssueRepository,
     PriorityRepository,
-    RoomTechPassportsRepository,
     RoomRepository,
     ServiceRepository,
     StatusRepository,
     StatusHistoryRepository,
     UserRepository,
     WorkCategoryRepository,
-    WorkflowRepository
+    WorkflowRepository,
+    TechPassportRepository
 )
 
 
@@ -31,13 +31,14 @@ class AbstractUnitOfWork(ABC):
     floor_repo: FloorRepository
     issues_repo: IssueRepository
     priority_repo: PriorityRepository
-    rooms_tech_passports_repo: RoomTechPassportsRepository
     room_repo: RoomRepository
     status_repo: StatusRepository
     statuses_history_repo: StatusHistoryRepository
     users_repo: UserRepository
     work_categories_repo: WorkCategoryRepository
     workflow_repo: WorkflowRepository
+    tech_passport_repo: TechPassportRepository
+
 
     @abstractmethod
     def __init__(self, *args):
@@ -75,13 +76,13 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
         self.floor_repo = FloorRepository(self.async_session)
         self.issues_repo = IssueRepository(self.async_session)
         self.priority_repo = PriorityRepository(self.async_session)
-        self.rooms_tech_passports_repo = RoomTechPassportsRepository(self.async_session)
         self.room_repo = RoomRepository(self.async_session)
         self.status_repo = StatusRepository(self.async_session)
         self.statuses_history_repo = StatusHistoryRepository(self.async_session)
         self.users_repo = UserRepository(self.async_session)
         self.work_categories_repo = WorkCategoryRepository(self.async_session)
         self.workflow_repo = WorkflowRepository(self.async_session)
+        self.tech_passport_repo = TechPassportRepository(self.async_session)
 
 
     async def __aexit__(self, *args):

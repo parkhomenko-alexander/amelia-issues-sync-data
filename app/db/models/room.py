@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from app.db.models.issue import Issue
     from app.db.models.floor import Floor
     from app.db.models.building import Building
-    from app.db.models.room_tech_passports import RoomTechPassports
+    # from app.db.models.room_tech_passports import RoomTechPassports
 
 
 
@@ -26,5 +26,5 @@ class Room(Base):
     floor: Mapped["Floor"] = relationship(back_populates="rooms", uselist=False, foreign_keys=[floor_id])
     building: Mapped["Building"] = relationship(back_populates="rooms", uselist=False, foreign_keys=[building_id])
     issues: Mapped["Issue"] = relationship(back_populates="room", uselist=True)
-    tech_passports: Mapped[list["RoomTechPassports"] | None] = relationship(back_populates="room", uselist=True)
+    # tech_passports: Mapped[list["RoomTechPassports"] | None] = relationship(back_populates="room", uselist=True)
 

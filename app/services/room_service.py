@@ -44,3 +44,12 @@ class RoomService():
     async def get_existing_external_ids(self, ids: list[int]) -> set[int]:
         return await self.uow.room_repo.get_existing_external_ids(ids)
 
+    @staticmethod
+    async def rooms_ids(uow: AbstractUnitOfWork) -> list[int]:
+        async with uow:
+            ids: list[int] = []
+            rooms = await uow.room_repo.get_all()
+            for r in rooms:
+                ids.append(r.external_id)        
+        return ids
+

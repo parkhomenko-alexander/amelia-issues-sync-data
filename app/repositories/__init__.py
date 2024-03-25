@@ -4,7 +4,6 @@ from app.repositories.facility_repository import FacilityRepository
 from app.repositories.floor_repository import FloorRepository
 from app.repositories.issue_repository import IssueRepository
 from app.repositories.priority_repository import PriorityRepository
-from app.repositories.room_tech_passports_repository import RoomTechPassportsRepository
 from app.repositories.room_repository import RoomRepository
 from app.repositories.service_repository import ServiceRepository
 from app.repositories.status_repository import StatusRepository
@@ -12,3 +11,4 @@ from app.repositories.statuses_history_repository import StatusHistoryRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.work_category_repository import WorkCategoryRepository
 from app.repositories.workflow_repository import WorkflowRepository
+from app.repositories.tech_possport_repository import TechPassportRepository

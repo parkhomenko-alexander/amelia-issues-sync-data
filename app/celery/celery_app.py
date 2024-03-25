@@ -54,6 +54,10 @@ celery_app.conf.beat_schedule = {
         "task": "tasks.amelia_buildings_tasks.sync_rooms", 
         "schedule": crontab(hour="22", minute="0", day_of_month="15")
     },
+    "sync_rooms": {
+        "task": "tasks.amelia_buildings_tasks.sync_tech_passports", 
+        "schedule": crontab(hour="22", minute="0", day_of_month="15")
+    },
 
 
     "sync_buildings": {

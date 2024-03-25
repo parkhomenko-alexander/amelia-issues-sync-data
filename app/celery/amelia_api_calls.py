@@ -23,6 +23,7 @@ class APIRoutes:
     ARCHIVE_ISSUES_WITH_QUERY = "/issues/archive?"
     ISSUES_STATUSES_WITH_QUERY = "/issue_histories?"
     CURRENT_ISSUES_WITH_QUERY = "/issues"
+    TECH_PASSPORT_WITH_ID = "/rooms/form_data?id="
 
 
     @classmethod

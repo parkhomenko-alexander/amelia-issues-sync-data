@@ -7,7 +7,6 @@ from app.db.base_model import Base, str_350
 if TYPE_CHECKING:
     from app.db.models.status_history import StatusHistory
     from app.db.models.workflow import Workflow
-    from app.db.models.room_tech_passports import RoomTechPassports
     from app.db.models.facility import Facility
     from app.db.models.issue import Issue
     from app.db.models.user import User
