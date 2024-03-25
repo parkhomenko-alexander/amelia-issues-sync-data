@@ -103,6 +103,7 @@ async def sync_companies():
             existing_external_ids = await company_service.get_existing_external_ids(external_ids)
             elements_to_insert = [element for element in companies if element.external_id not in existing_external_ids]
             element_to_update = [element for element in companies if element.external_id in existing_external_ids]
+            print(elements_to_insert, element_to_update)
             if elements_to_insert != []:
                 await company_service.bulk_insert(elements_to_insert) 
             if element_to_update != []:
