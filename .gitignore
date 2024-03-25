@@ -113,3 +113,4 @@ app/**/__pycache__
 logs/
 
 alembic/vers
+app/celery/temp.py

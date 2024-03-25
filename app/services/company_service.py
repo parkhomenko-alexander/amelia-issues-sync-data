@@ -41,7 +41,7 @@ class CompanyService():
         return 0                 
 
     async def get_existing_external_ids(self, ids: list[int]) -> set[int]:
-        return await self.uow.facility_repo.get_existing_external_ids(ids)
+        return await self.uow.company_repo.get_existing_external_ids(ids)
 
     # @with_uow
     # async def get_company(self, id: int) -> CompanyOrmSсheme | None:
