@@ -111,3 +111,5 @@ app/**/__pycache__
 .vscode/
 
 logs/
+
+alembic/vers
