@@ -109,3 +109,5 @@ venv.bak/
 
 app/**/__pycache__
 .vscode/
+
+/logs
