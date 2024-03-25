@@ -1,6 +1,6 @@
 from celery import Celery
 from celery.schedules import crontab
-from config import config
+from  config import config
 
 
 celery_app = Celery(
