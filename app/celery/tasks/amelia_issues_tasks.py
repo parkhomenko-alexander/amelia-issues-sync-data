@@ -390,7 +390,8 @@ async def sync_archive():
     await sync_archive_statuses()
     return
 
-
+@celery_app.task()
+@async_to_sync
 async def sync_current_issues():
     """
     Get current issues
