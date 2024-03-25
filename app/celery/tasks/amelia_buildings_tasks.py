@@ -219,10 +219,10 @@ async def sync_tech_passports():
     try:
         tech_passport_service = TechPassportService(uow)
         tech_passports: list[TechPassportSchema] = []
-        for i in range(0, ids_len):
+        for i in range(501, ids_len):
             room_id = rooms_ids[i]
             response = amelia_api.get(APIRoutes.TECH_PASSPORT_WITH_ID + str(room_id))
-            sleep(0.15)
+            sleep(0.25)
             if response is None:
                 msg = "Tech passport response is none"
                 logger.error(msg)
