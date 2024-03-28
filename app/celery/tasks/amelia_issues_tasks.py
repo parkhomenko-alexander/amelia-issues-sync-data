@@ -324,6 +324,7 @@ async def sync_archive():
 
             params = amelia_api.create_json_for_request(APIGrids.ARCHIVE_ISSUES, i)
             response = amelia_api.get(APIRoutes.ARCHIVE_ISSUES_WITH_QUERY, params=params)
+            sleep(.4)
 
             if response is None:
                 msg = "Archive issues response is none"
@@ -446,7 +447,7 @@ async def sync_current_issues():
 
                 params = amelia_api.create_json_for_request(APIGrids.CURRENT_ISSUES, page=i, service_id=service_id)
                 response = amelia_api.get(APIRoutes.CURRENT_ISSUES_WITH_QUERY, params=params)
-                sleep(.3)
+                sleep(.4)
 
                 if response is None:
                     msg = "Current issues response is none"
@@ -566,7 +567,7 @@ async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | No
             ext_issue_id = existing_issues_external_ids[i]
             params = amelia_api.create_json_for_request(APIGrids.ISSUES_STATUSES, 1, issue_id=ext_issue_id)
             response = amelia_api.get(APIRoutes.ISSUES_STATUSES_WITH_QUERY, params=params)
-            sleep(0.3)
+            sleep(0.4)
 
             if response is None:
                 msg = "Issues history statuses response is none"
