@@ -6,7 +6,7 @@ from app.celery.helpers import ReturnTypeFromJsonQuery, async_to_sync, handle_re
 from app.schemas.building_schemas import BuildingPostSchema
 from app.schemas.floor_schemas import FloorPostSchema
 from app.schemas.room_schemas import RoomPostSchema
-from app.schemas.tech_passport_schemas import TechPassportSchema
+from app.schemas.tech_passport_schemas import TechPassportPostSchema
 from app.services.building_service import BuildingService
 from app.services.fasility_service import FacilityService
 from app.services.floor_service import FloorService
@@ -201,8 +201,6 @@ async def sync_rooms():
     logger.info("Rooms were synchronized")
     return
 
-@celery_app.task()
-@async_to_sync
 async def sync_tech_passports():
     """
         Get tech passports
@@ -218,8 +216,8 @@ async def sync_tech_passports():
     logger.info("Tech passports are synchronize")
     try:
         tech_passport_service = TechPassportService(uow)
-        tech_passports: list[TechPassportSchema] = []
-        for i in range(501, ids_len):
+        tech_passports: list[TechPassportPostSchema] = []
+        for i in range(0, ids_len):
             room_id = rooms_ids[i]
             response = amelia_api.get(APIRoutes.TECH_PASSPORT_WITH_ID + str(room_id))
             sleep(0.25)
@@ -228,27 +226,31 @@ async def sync_tech_passports():
                 logger.error(msg)
                 return msg
     
-            tech_passport_validated: TechPassportSchema = handle_response_of_tech_passports(response, TechPassportSchema, room_id)
+            tech_passport_validated: TechPassportPostSchema = handle_response_of_tech_passports(response, TechPassportPostSchema, room_id)
             tech_passports.append(tech_passport_validated)
 
             if i % 10 == 0:
                 logger.info(f"Sync {i} tech passports")
 
-            if i % 50 == 0:
-                await tech_passport_service.bulk_insert(tech_passports)
+            if i != 0 and (i % 50 == 0 or i == ids_len):
+                elements_to_insert, elements_to_update = [], []
+                external_ids = [tech_passport.external_id for tech_passport in tech_passports]
+                existing_external_ids = await tech_passport_service.get_existing_external_ids(external_ids)
+                for tech_passport in tech_passports:
+                    if tech_passport.external_id in existing_external_ids:
+                        elements_to_update.append(tech_passport)
+                    else:
+                        elements_to_insert.append(tech_passport)
+
+                if elements_to_insert != []:
+                    await tech_passport_service.bulk_insert(elements_to_insert) 
+                if elements_to_update != []:
+                    await tech_passport_service.bulk_update(elements_to_update)
                 tech_passports = []
-            # external_ids = [company.external_id for company in companies]
-            # existing_external_ids = await company_service.get_existing_external_ids(external_ids)
-            # elements_to_insert = [element for element in companies if element.external_id not in existing_external_ids]
-            # element_to_update = [element for element in companies if element.external_id in existing_external_ids]
-            # if elements_to_insert != []:
-            #     await company_service.bulk_insert(elements_to_insert) 
-            # if element_to_update != []:
-            #     await company_service.bulk_update(element_to_update) 
-        await tech_passport_service.bulk_insert(tech_passports)
+
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
         return e
     
-    logger.info("Companies were synchronized")
+    logger.info("Tech passport were synchronized")
     return

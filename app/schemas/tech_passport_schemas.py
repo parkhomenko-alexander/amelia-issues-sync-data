@@ -2,7 +2,7 @@ import uuid
 from pydantic import BaseModel, Field, validator
 
 
-class TechPassportSchema(BaseModel):
+class TechPassportPostSchema(BaseModel):
     title: str
     object_view: str | None = Field(None)
     object_type: str | None = Field(None)

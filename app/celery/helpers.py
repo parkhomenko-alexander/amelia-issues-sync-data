@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from requests import Response
 
-from app.schemas.tech_passport_schemas import TechPassportSchema
+from app.schemas.tech_passport_schemas import TechPassportPostSchema
 
 
 def async_to_sync(task_func):
@@ -45,13 +45,13 @@ def handle_response_of_path_params(response: Response, model: Type[T]) -> Return
 
     return ReturnTypePathParams[model](data=response.json())
 
-def handle_response_of_tech_passports(response: Response, model: Type[TechPassportSchema], room_id) -> TechPassportSchema:
+def handle_response_of_tech_passports(response: Response, model: Type[TechPassportPostSchema], room_id) -> TechPassportPostSchema:
     """
         Handling request status and return data
     """
     response_json = response.json()
     fields = response_json["fields"]
-    tech_passport = TechPassportSchema(
+    tech_passport = TechPassportPostSchema(
         title = fields[0]["value"],
         object_view = fields[7]["value"],
         object_class = fields[8]["value"],

@@ -60,19 +60,19 @@ celery_app.conf.beat_schedule = {
     },
 
 
-    "sync_buildings": {
+    "sync_statuses": {
         "task": "tasks.amelia_issues_tasks.sync_statuses", 
         "schedule": crontab(day_of_month="1", hour="0", minute="0")
     },
-    "sync_floors": {
+    "sync_services": {
         "task": "tasks.amelia_issues_tasks.sync_services", 
         "schedule": crontab(day_of_month="1", hour="0", minute="0")
     },
-    "sync_rooms": {
+    "sync_work_categories": {
         "task": "tasks.amelia_issues_tasks.sync_work_categories", 
         "schedule": crontab(day_of_month="1", hour="0", minute="0")
     },
-    "sync_rooms": {
+    "sync_current_issues": {
         "task": "tasks.amelia_issues_tasks.sync_current_issues", 
         "schedule": crontab(minute="*/50")
     },
