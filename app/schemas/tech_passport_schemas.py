@@ -18,15 +18,15 @@ class TechPassportPostSchema(BaseModel):
 
     external_id: int = Field()
 
-    @validator("square")
+    @validator("square", always=True)
     def normalize_square(cls, square: float | None | str, values: dict):
         try:
             if square is None or square == "":
                 return None
             return float(square)
         except Exception as err:
-            company_id = values.get("company_id")
-            logger.error(f"Eror square: {err} {company_id}")
+            tp_id = values.get("external_id")
+            logger.error(f"Eror square: {err} {tp_id}")
             return 0
 
     
