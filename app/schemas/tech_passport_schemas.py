@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, validator
 
 class TechPassportPostSchema(BaseModel):
     title: str
+    external_id: int  = Field()
     object_view: str | None = Field(None)
     object_type: str | None = Field(None)
     object_class: str | None = Field(None)
@@ -16,7 +17,6 @@ class TechPassportPostSchema(BaseModel):
     organization_2lvl: int | None = Field(None)
     floor_id: int | None = Field(None)
 
-    external_id: int = Field()
 
     @validator("square", always=True)
     def normalize_square(cls, square: float | None | str, values: dict):
