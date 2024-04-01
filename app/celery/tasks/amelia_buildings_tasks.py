@@ -201,6 +201,8 @@ async def sync_rooms():
     logger.info("Rooms were synchronized")
     return
 
+@celery_app.task()
+@async_to_sync
 async def sync_tech_passports():
     """
         Get tech passports
