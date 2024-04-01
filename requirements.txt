@@ -17,6 +17,7 @@ colorama==0.4.6
 comm==0.2.1
 debugpy==1.8.1
 decorator==5.1.1
+et-xmlfile==1.1.0
 fastapi==0.109.2
 flower==2.0.1
 greenlet==3.0.3
@@ -29,7 +30,10 @@ loguru==0.7.2
 Mako==1.3.2
 MarkupSafe==2.1.5
 nest-asyncio==1.6.0
+numpy==1.26.4
+openpyxl==3.1.2
 packaging==23.2
+pandas==2.2.1
 platformdirs==4.2.0
 prometheus_client==0.20.0
 prompt-toolkit==3.0.43
@@ -38,9 +42,10 @@ pure-eval==0.2.2
 pydantic==2.6.1
 pydantic-settings==2.1.0
 pydantic_core==2.16.2
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 pytz==2024.1
+pywin32==306
 PyYAML==6.0.1
 pyzmq==25.1.2
 redis==5.0.1
