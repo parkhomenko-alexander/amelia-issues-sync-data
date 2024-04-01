@@ -23,10 +23,11 @@ class TechPassportPostSchema(BaseModel):
         try:
             if square is None or square == "":
                 return None
+            return float(square)
         except Exception as err:
             logger.error(f"Eror square: {err}")
             return 0
-        return float(square)
+
     
     @validator("number_study_places")
     def normalize_study_places(cls, study_places: float | None | str):
