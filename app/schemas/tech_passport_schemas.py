@@ -1,4 +1,5 @@
 import uuid
+from loguru import logger
 from pydantic import BaseModel, Field, validator
 
 
@@ -19,9 +20,12 @@ class TechPassportPostSchema(BaseModel):
 
     @validator("square")
     def normalize_square(cls, square: float | None | str):
-        if square is None or square == "":
-            return None
-
+        try:
+            if square is None or square == "":
+                return None
+        except Exception as err:
+            logger.error(f"Eror square: {err}")
+            return 0
         return float(square)
     
     @validator("number_study_places")
