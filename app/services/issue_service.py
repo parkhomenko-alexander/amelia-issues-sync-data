@@ -46,6 +46,20 @@ class IssueService():
     async def get_existing_external_ids(self, ids: list[int]) -> set[int]:
         return await self.uow.issues_repo.get_existing_external_ids(ids)
     
+    @with_uow
+    async def bulk_delete(self, elements_id: list[int]) -> int: 
+        """
+        Bulk delete issues
+        """
+        try:
+            await self.uow.issues_repo.bulk_delete(elements_id)
+            await self.uow.commit()
+        except Exception as e:
+            logger.error(f"Some error occurred: {e}")
+            return 1
+        
+        logger.info(f"Issues {elements_id[0]}, ... was remove")
+        return 0
 
     @staticmethod
     async def get_all_external_ids(uow: AbstractUnitOfWork) -> Sequence[int]:

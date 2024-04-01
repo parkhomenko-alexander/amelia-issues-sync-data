@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Generic, Optional, Sequence, Type, TypeVar
 from pydantic import BaseModel
-from sqlalchemy import insert, or_, select, update
+from sqlalchemy import delete, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import count 
 from app.db.base_model import Base
@@ -137,6 +137,13 @@ class SQLAlchemyRepository(AbstractRepository[T]):
         res = await self.async_session.execute(stmt)
         return res.scalars().all()
     
+    async def bulk_delete(self, ids_lsit: list[int]) -> int:
+        stmt = (
+            delete(self.model).where(self.model.external_id.in_(ids_lsit))
+        )
+        res = await self.async_session.execute(stmt)
+        return 0
+
     # async def bulk_insert_by_external_ids(self, data: list[dict]):
     #     for item in data:
     #         stmt = (

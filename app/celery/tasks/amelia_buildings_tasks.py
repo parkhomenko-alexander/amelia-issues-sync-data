@@ -170,7 +170,7 @@ async def sync_rooms():
         for i in range(1, pages):
             params = amelia_api.create_json_for_request(APIGrids.ROOMS, i)
             response = amelia_api.get(APIRoutes.ROOMS_WITH_QUERY, params=params)
-
+            sleep(.4)
             if response is None:
                 msg = "Rooms response is none"
                 logger.error(msg)
@@ -220,7 +220,7 @@ async def sync_tech_passports():
         for i in range(0, ids_len):
             room_id = rooms_ids[i]
             response = amelia_api.get(APIRoutes.TECH_PASSPORT_WITH_ID + str(room_id))
-            sleep(0.25)
+            sleep(0.4)
             if response is None:
                 msg = "Tech passport response is none"
                 logger.error(msg)

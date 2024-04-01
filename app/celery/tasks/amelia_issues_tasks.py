@@ -291,16 +291,6 @@ async def sync_archive():
     amelia_api: AmeliaApi = AmeliaApi()
     amelia_api.auth()
 
-    params = amelia_api.create_json_for_request(APIGrids.ARCHIVE_ISSUES)
-    response: Response | None = amelia_api.get(APIRoutes.ARCHIVE_ISSUES_WITH_QUERY, params=params)
-    if response is None:
-        msg = "Archive issues response is none"
-        logger.error(msg)
-        return msg
-    
-    response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response, IssuePostSchema)
-    pages: int = amelia_api.get_count_of_pages(response_data)
-
     company_title_id_mapped: dict[str, int] = await CompanyService.get_title_id_mapping(uow)
     service_work_categories_mapped: dict[int, dict[str, int]] = await ServiceService.get_mapping_service_id_work_categories(uow)
     building_title_id_mapped: dict[str, int] = await BuildingService.get_title_id_mapping(uow)
@@ -313,75 +303,122 @@ async def sync_archive():
     workflow_extenal_id_id_mapping: dict[int, int] = await WorkflowService.get_external_id_id_mapping(uow)
     users_ids: set[int] = await UserService.get_users_ids(uow)
     
+    
+    all_external_ids_issues_seq: Sequence[int] = await IssueService.get_all_external_ids(uow)
+    all_external_ids_issues_set: set[int] = set(all_external_ids_issues_seq)
+
+    service_ids = [*service_work_categories_mapped]
 
     logger.info("Archive issues are synchronize")
     try:
         issue_service = IssueService(uow)
-        issues: list[IssuePostSchema] = []
-
-        for i in range(1, pages):
-            logger.info(f"Page: {i}")
-
-            params = amelia_api.create_json_for_request(APIGrids.ARCHIVE_ISSUES, i)
-            response = amelia_api.get(APIRoutes.ARCHIVE_ISSUES_WITH_QUERY, params=params)
-            sleep(.4)
-
-            if response is None:
-                msg = "Archive issues response is none"
+        for service_id in service_ids:
+            issues_for_inserting: list[IssuePostSchema] = []
+            issues_for_updating: list[IssuePostSchema] = []
+            issue_id_for_status_sinchronize: list[int] = []
+            params = amelia_api.create_json_for_request(APIGrids.ARCHIVE_ISSUES, service_id=service_id)
+            response_for_pages: Response | None = amelia_api.get(APIRoutes.ARCHIVE_ISSUES_WITH_QUERY, params=params)
+            
+            if response_for_pages is None:
+                msg: str = "Page response for service_id: {service_id} is None"
                 logger.error(msg)
-                return msg
-    
-            response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response, IssuePostSchema)
+                continue
 
-            for iss in response_data.data:
-                building_title = iss.building_title.split("/")[0][:-1]
-                if iss.room_title is None:
-                    room_id = None
-                else:
-                    room_id = building_rooms_mapping[building_title].get(iss.room_title)
+            response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response_for_pages, IssuePostSchema)
+            pages: int = amelia_api.get_count_of_pages(response_data)
+
+            all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id)
+
+            for i in range(1, pages):
+                logger.info(f"Page: {i}, service: {service_id}")
+
+                params = amelia_api.create_json_for_request(APIGrids.ARCHIVE_ISSUES, page=i, service_id=service_id)
+                response = amelia_api.get(APIRoutes.ARCHIVE_ISSUES_WITH_QUERY, params=params)
+                sleep(.5)
+
+                if response is None:
+                    msg = "Current issues response is none"
+                    logger.error(msg)
+                    return msg
+        
+                response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response, IssuePostSchema)
+
+                for iss in response_data.data:
+                    current_issues_status = all_issues_with_statuses.get(iss.external_id, None)
+
+                    # print(iss)
+                    state = iss.state
+                    building_title = iss.building_title.split("/")[0][:-1]
+                    if iss.room_title is None:
+                        room_id = None
+                    else:
+                        room_id = building_rooms_mapping[building_title].get(iss.room_title)
+                    
+                    # на проде не будет проскакивать, для разработки, чтобы не ловить ошибку
+                    if iss.declarer_id not in users_ids: 
+                        iss.declarer_id = None
                 
-                # на проде не будет проскакивать, для разработки, чтобы не ловить ошибку
-                if iss.declarer_id not in users_ids: 
-                    iss.declarer_id = None
-            
-                iss.company_id = None if iss.company_name is None else company_title_id_mapped[iss.company_name]
-                iss.work_category_id = service_work_categories_mapped[iss.service_id][iss.work_category_title]
-                
-                iss.building_id = building_title_id_mapped[building_title]
+                    iss.company_id = None if iss.company_name is None else company_title_id_mapped[iss.company_name]
+                    iss.work_category_id = service_work_categories_mapped[iss.service_id][iss.work_category_title]
+                    
+                    iss.building_id = building_title_id_mapped[building_title]
 
-                iss.priority_id = None if iss.priority_title is None else priority_title_id_mapped.get(iss.priority_title, None)
-                iss.executor_id = None if iss.executor_full_name is None else exucutor_fullname_id_mapped.get(iss.executor_full_name, None)
+                    iss.priority_id = None if iss.priority_title is None else priority_title_id_mapped.get(iss.priority_title, None)
+                    iss.executor_id = None if iss.executor_full_name is None else exucutor_fullname_id_mapped.get(iss.executor_full_name, None)
 
-                iss.workflow_id = workflow_extenal_id_id_mapping[iss.workflow_id]
-                iss.room_id = room_id
+                    iss.workflow_id = workflow_extenal_id_id_mapping[iss.workflow_id]
+                    iss.room_id = room_id
+                    # logger.info(iss)
 
-                issues.append(iss)
-                # logger.info(iss)
-            external_ids = [e.external_id for e in issues]
-            
-            if i % 50 == 0 and i != 0:
-                if external_ids == []:
-                    continue
-                existing_external_ids = await issue_service.get_existing_external_ids(external_ids)
+                    match (current_issues_status, iss.external_id in all_external_ids_issues_set, state == current_issues_status):
+                        case (None, False, _):
+                            issues_for_inserting.append(iss)
+                            issue_id_for_status_sinchronize.append(iss.external_id)
+                        case (None, True, _):
+                            issues_for_updating.append(iss)
+                            issue_id_for_status_sinchronize.append(iss.external_id)
+                        case (_, _, True):
+                            all_issues_with_statuses.pop(iss.external_id)
+                            issues_for_updating.append(iss)
+                        case (_, _, False):
+                            issues_for_updating.append(iss)
+                            issue_id_for_status_sinchronize.append(iss.external_id)
+                            all_issues_with_statuses.pop(iss.external_id)
 
-                elements_to_insert = [element for element in issues if element.external_id not in existing_external_ids]
-                element_to_update = [element for element in issues if element.external_id in existing_external_ids]
-                if elements_to_insert != []:
-                    await issue_service.bulk_insert(elements_to_insert) 
-                if element_to_update != []:
-                    await issue_service.bulk_update(element_to_update)
-                issues = []
-                
-        external_ids = [e.external_id for e in issues]
-        if external_ids != []:
-            existing_external_ids = await issue_service.get_existing_external_ids(external_ids)
+                if i % 10 == 0:
 
-            elements_to_insert = [element for element in issues if element.external_id not in existing_external_ids]
-            element_to_update = [element for element in issues if element.external_id in existing_external_ids]
-            if elements_to_insert != []:
-                await issue_service.bulk_insert(elements_to_insert) 
-            if element_to_update != []:
-                await issue_service.bulk_update(element_to_update)
+                    if issues_for_inserting != []:
+                        await issue_service.bulk_insert(issues_for_inserting) 
+                    if issues_for_updating != []:
+                        await issue_service.bulk_update(issues_for_updating)
+                    if issue_id_for_status_sinchronize != []:
+                        await sync_archive_statuses(issue_id_for_status_sinchronize) 
+
+                    issue_id_for_status_sinchronize = []
+                    issues_for_updating = []
+                    issues_for_inserting = []
+
+                    all_external_ids_issues_seq = await IssueService.get_all_external_ids(uow)
+                    all_external_ids_issues_set = set(all_external_ids_issues_seq)
+                elif i == pages - 1:
+
+                    if issues_for_inserting != []:
+                        await issue_service.bulk_insert(issues_for_inserting)
+                        issues_for_inserting = []
+                    if issues_for_updating != []:
+                        await issue_service.bulk_update(issues_for_updating)
+                        issues_for_updating = []
+                    if issue_id_for_status_sinchronize != []:
+                        await sync_archive_statuses(issue_id_for_status_sinchronize)
+                        issue_id_for_status_sinchronize = []
+
+                    current_iss_ids_for_update_and_remove  = []
+                    excluded_statuses = ["отказано", "исполнена", "закрыта"]
+                    for issue_id, status in all_issues_with_statuses.items():
+                        if status not in excluded_statuses:
+                            current_iss_ids_for_update_and_remove.append(issue_id)
+
+                    await sync_archive_statuses(current_iss_ids_for_update_and_remove)
 
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
@@ -417,7 +454,6 @@ async def sync_current_issues():
     users_ids: set[int] = await UserService.get_users_ids(uow)
 
 
-    all_issues_with_statues: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow)
     
     all_external_ids_issues_seq: Sequence[int] = await IssueService.get_all_external_ids(uow)
     all_external_ids_issues_set: set[int] = set(all_external_ids_issues_seq)
@@ -427,7 +463,7 @@ async def sync_current_issues():
     logger.info("Current issues are synchronize")
     try:
         issue_service = IssueService(uow)
-
+        
         for service_id in service_ids:
             issues_for_inserting: list[IssuePostSchema] = []
             issues_for_updating: list[IssuePostSchema] = []
@@ -442,12 +478,15 @@ async def sync_current_issues():
 
             response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response_for_pages, IssuePostSchema)
             pages: int = amelia_api.get_count_of_pages(response_data)
+
+            all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id)
+
             for i in range(1, pages):
                 logger.info(f"Page: {i}, service: {service_id}")
 
                 params = amelia_api.create_json_for_request(APIGrids.CURRENT_ISSUES, page=i, service_id=service_id)
                 response = amelia_api.get(APIRoutes.CURRENT_ISSUES_WITH_QUERY, params=params)
-                sleep(.4)
+                sleep(.5)
 
                 if response is None:
                     msg = "Current issues response is none"
@@ -457,7 +496,7 @@ async def sync_current_issues():
                 response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response, IssuePostSchema)
 
                 for iss in response_data.data:
-                    current_issues_status = all_issues_with_statues.get(iss.external_id, None)
+                    current_issues_status = all_issues_with_statuses.get(iss.external_id, None)
 
                     # print(iss)
                     state = iss.state
@@ -491,12 +530,12 @@ async def sync_current_issues():
                             issues_for_updating.append(iss)
                             issue_id_for_status_sinchronize.append(iss.external_id)
                         case (_, _, True):
-                            all_issues_with_statues.pop(iss.external_id)
+                            all_issues_with_statuses.pop(iss.external_id)
                             issues_for_updating.append(iss)
                         case (_, _, False):
                             issues_for_updating.append(iss)
                             issue_id_for_status_sinchronize.append(iss.external_id)
-                            all_issues_with_statues.pop(iss.external_id)
+                            all_issues_with_statuses.pop(iss.external_id)
 
                 if i % 10 == 0:
 
@@ -513,19 +552,25 @@ async def sync_current_issues():
 
                     all_external_ids_issues_seq = await IssueService.get_all_external_ids(uow)
                     all_external_ids_issues_set = set(all_external_ids_issues_seq)
+                elif i == pages - 1:
 
-            if issues_for_inserting != []:
-                await issue_service.bulk_insert(issues_for_inserting)
-                issues_for_inserting = []
-            if issues_for_updating != []:
-                await issue_service.bulk_update(issues_for_updating)
-                issues_for_updating = []
-            if issue_id_for_status_sinchronize != []:
-                await sync_archive_statuses(issue_id_for_status_sinchronize)
-                issue_id_for_status_sinchronize = []
+                    if issues_for_inserting != []:
+                        await issue_service.bulk_insert(issues_for_inserting)
+                        issues_for_inserting = []
+                    if issues_for_updating != []:
+                        await issue_service.bulk_update(issues_for_updating)
+                        issues_for_updating = []
+                    if issue_id_for_status_sinchronize != []:
+                        await sync_archive_statuses(issue_id_for_status_sinchronize)
+                        issue_id_for_status_sinchronize = []
 
-        issue_id_for_status_sinchronize = [*all_issues_with_statues]
-        await sync_archive_statuses(issue_id_for_status_sinchronize)
+                    current_iss_ids_for_update_and_remove  = []
+                    excluded_statuses = ["отказано", "исполнена", "закрыта"]
+                    for issue_id, status in all_issues_with_statuses.items():
+                        if status not in excluded_statuses:
+                            current_iss_ids_for_update_and_remove.append(issue_id)
+
+                    await sync_archive_statuses(current_iss_ids_for_update_and_remove)
 
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
@@ -556,18 +601,21 @@ async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | No
     amelia_api: AmeliaApi = AmeliaApi()
     amelia_api.auth()
 
+    issues_service = IssueService(uow)
+
     if existing_issues_external_ids is None:
         existing_issues_external_ids = await IssueService.get_all_external_ids(uow)
 
     logger.info("Issues statuses are synchronize")
     try:
+        issues_ids_for_removing = []
         statuses: list[HistoryStatusRecord] = []
         for i in range(0, len(existing_issues_external_ids)):
             logger.info(f"Issues statuses page: {i}")
             ext_issue_id = existing_issues_external_ids[i]
             params = amelia_api.create_json_for_request(APIGrids.ISSUES_STATUSES, 1, issue_id=ext_issue_id)
             response = amelia_api.get(APIRoutes.ISSUES_STATUSES_WITH_QUERY, params=params)
-            sleep(0.4)
+            sleep(0.7)
 
             if response is None:
                 msg = "Issues history statuses response is none"
@@ -575,6 +623,10 @@ async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | No
                 return msg
             response_statuses_data: ReturnTypeFromJsonQuery[HistoryStatusRecord] = handle_response_of_json_query(response, HistoryStatusRecord)
             
+            if response_statuses_data.data == []:
+                issues_ids_for_removing.append(ext_issue_id)
+                continue
+
             for resp_status in response_statuses_data.data:
                 resp_status.issue_id = ext_issue_id
                 statuses.append(resp_status)
@@ -584,7 +636,10 @@ async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | No
                 statuses = []
 
         if statuses != []:
-            await insert_history_statuses(statuses, uow)   
+            await insert_history_statuses(statuses, uow)
+        if issues_ids_for_removing != []:
+            await issues_service.bulk_delete(issues_ids_for_removing)
+            
               
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")

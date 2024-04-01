@@ -45,24 +45,11 @@ class HistoryStatusService():
         return await self.uow.statuses_history_repo.get_existing_external_ids(ids)
 
     @staticmethod
-    async def get_external_issues_id_with_status_title(uow: AbstractUnitOfWork) -> dict[int, str]:
+    async def get_external_issues_id_with_status_title(uow: AbstractUnitOfWork, service_id: None | int=None) -> dict[int, str]:
         async with uow:
-            iss_status = await uow.statuses_history_repo.get_last_statuses_for_each_issue()
+            iss_status = await uow.statuses_history_repo.get_last_statuses_for_each_issue(service_id)
             res={}
             for row in iss_status:
                 res[row[0]] = row[1]
         return res
 
-
-    # @with_uow
-    # async def get_company(self, id: int) -> CompanyOrmSсheme | None:
-    #     res = await self.uow.facility_repo.find_one(external_id = id)
-
-    #     if not res:
-    #         return None
-    #     return CompanyOrmSсheme.model_validate(res, from_attributes=True)
-    
-    # @with_uow    
-    # async def get_count(self) -> int:
-        # res = await self.uow.facility_repo.get_count()
-        # return res 

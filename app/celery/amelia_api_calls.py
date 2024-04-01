@@ -135,7 +135,9 @@ class AmeliaApi():
                         "rowsPerPage": 0,
                         "rowsNumber": 0,
                         "query": "",
-                        "filters": {"type":"MaintenanceIssue"},
+                        "filters": {
+                            "type":"MaintenanceIssue",
+                            "service_id": service_id},
                         "except_filters": {},
                         "grid": grid.value
                     }
