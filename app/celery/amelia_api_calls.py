@@ -82,6 +82,11 @@ class AmeliaApi():
                 if st_code != 200:
                     logger.error(f"Some error: status code is {st_code}, text: {response.text}")
                     response = None
+                elif st_code == 401:
+                    logger.error(f"Some error: status code is {st_code}, text: {response.text}")
+                    time.sleep(20)
+                    logger.info("Next try")
+                    continue
                 flag = False
             except Exception as e:
                     logger.exception("Some error: ", e)
