@@ -20,7 +20,6 @@ class TechPassportPostSchema(BaseModel):
 
     @validator("square", always=True)
     def normalize_square(cls, square: float | None | str, values: dict):
-        logger.info(values)
         try:
             if square is None or square == "":
                 return None
