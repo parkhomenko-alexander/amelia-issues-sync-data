@@ -65,4 +65,15 @@ class IssueService():
     async def get_all_external_ids(uow: AbstractUnitOfWork) -> Sequence[int]:
         async with uow:
             return await uow.issues_repo.get_all_external_ids()
-
+        
+    @staticmethod
+    async def get_all_external_ids_with_excluded_statuses(uow: AbstractUnitOfWork, statueses: list[str]=[]) -> set[int]:
+        async with uow:
+            res = await uow.issues_repo.get_all_external_ids_with_excluded_statuses(statueses)
+            return set(res)
+    
+    @staticmethod
+    async def get_all_external_ids_with_included_statuses(uow: AbstractUnitOfWork, statueses: list[str]=[]) -> set[int]:
+        async with uow:
+            res = await uow.issues_repo.get_all_external_ids_with_included_statuses(statueses)
+            return set(res)

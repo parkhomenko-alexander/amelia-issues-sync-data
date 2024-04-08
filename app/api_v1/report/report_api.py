@@ -16,7 +16,8 @@ router = APIRouter(
 )
 async def generate_general_report(
     uow: UowDep,
-    request: Request   
+    request: Request,
+    response_class=FileResponse  
 ):  
     try:
         room_service = RoomService(uow)

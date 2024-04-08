@@ -23,95 +23,7 @@ from app.celery.celery_app import celery_app
 from app.celery.helpers import ReturnTypeFromJsonQuery, ReturnTypePathParams, async_to_sync, handle_response_of_json_query, handle_response_of_path_params
 from app.services.fasility_service import FacilityService
 from app.utils.unit_of_work import AbstractUnitOfWork, SqlAlchemyUnitOfWork
-
-
-# @celery_app.task()
-# @async_to_sync
-# async def sync_priorities():
-#     """
-#     Get priorities
-#     """
-
-#     uow = SqlAlchemyUnitOfWork()
-
-#     amelia_api: AmeliaApi = AmeliaApi()
-#     amelia_api.auth()
-
-#     params = amelia_api.create_json_for_request(APIGrids.PRIORITIES)
-
-#     response = amelia_api.get(APIRoutes.PRIORITIES_WITH_QUERY, params=params)
-#     if response is None:
-#         msg = "Priority response is none"
-#         logger.error(msg) 
-#         return msg
-    
-#     response_data: ReturnTypeFromJsonQuery[PriorityPostSchema] | None = handle_response_of_json_query(response, PriorityPostSchema)
-    
-#     priorities = response_data.data
-#     # priorities: list[PriorityPostSchema] = [PriorityPostSchema.model_validate(f) for f in priorities_data]
-    
-#     facilities_name_id_mapped: dict[str, int] = await FacilityService.get_title_id_mapping(uow)
-
-#     for p in priorities:
-#         p.facility_id = facilities_name_id_mapped[p.facility_title]
-    
-#     priority_service = PriorityService(uow)
-
-#     external_ids = [priority.external_id for priority in priorities]
-#     existing_external_ids = await priority_service.get_existing_external_ids(external_ids)
-#     elements_to_insert = [element for element in priorities if element.external_id not in existing_external_ids]
-#     element_to_update = [element for element in priorities if element.external_id in existing_external_ids]
-
-#     if elements_to_insert != []:
-#         await priority_service.bulk_insert(elements_to_insert) 
-#     if element_to_update != []:
-#         await priority_service.bulk_update(element_to_update) 
-#     msg = "Priority were synchronized"
-#     logger.info(msg) 
-#     return msg
-
-# @celery_app.task()
-# @async_to_sync
-# async def sync_workflows():
-#     """
-#     Get priorities
-#     """
-
-#     uow = SqlAlchemyUnitOfWork()
-
-#     amelia_api: AmeliaApi = AmeliaApi()
-#     amelia_api.auth()
-
-#     params = amelia_api.create_json_for_request(APIGrids.WORKFLOWS)
-
-#     response = amelia_api.get(APIRoutes.WORKFLOWS_WITH_QUERY, params=params)
-#     if response is None:
-#         msg = "Workflow response is none"
-#         logger.error(msg) 
-#         return msg
-#     response_data: ReturnTypeFromJsonQuery[WorkflowPostSchema] | None = handle_response_of_json_query(response, WorkflowPostSchema)
-    
-#     workflows = response_data.data
-    
-#     workflows_name_id_mapped: dict[str, int] = await FacilityService.get_title_id_mapping(uow)
-
-#     for p in workflows:
-#         p.facility_id = workflows_name_id_mapped[p.facility_title]
-    
-#     workflows_service = WorkflowService(uow)
-
-#     external_ids = [wf.external_id for wf in workflows]
-#     existing_external_ids = await workflows_service.get_existing_external_ids(external_ids)
-#     elements_to_insert = [element for element in workflows if element.external_id not in existing_external_ids]
-#     element_to_update = [element for element in workflows if element.external_id in existing_external_ids]
-
-#     if elements_to_insert != []:
-#         await workflows_service.bulk_insert(elements_to_insert) 
-#     if element_to_update != []:
-#         await workflows_service.bulk_update(element_to_update) 
-#     msg = "Workflows were synchronized"
-#     logger.info(msg) 
-#     return msg
+from config import config
 
 @celery_app.task()
 @async_to_sync
@@ -281,7 +193,7 @@ async def sync_work_categories():
 
 @celery_app.task()
 @async_to_sync
-async def sync_archive():
+async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
     """
     Get archive
     """
@@ -304,8 +216,8 @@ async def sync_archive():
     users_ids: set[int] = await UserService.get_users_ids(uow)
     
     
-    all_external_ids_issues_seq: Sequence[int] = await IssueService.get_all_external_ids(uow)
-    all_external_ids_issues_set: set[int] = set(all_external_ids_issues_seq)
+    included_statuses = ["отказано", "исполнена", "закрыта"]
+    all_external_ids_issues_set: set[int] = await IssueService.get_all_external_ids_with_included_statuses(uow, included_statuses)
 
     service_ids = [*service_work_categories_mapped]
 
@@ -323,9 +235,10 @@ async def sync_archive():
                 msg: str = "Page response for service_id: {service_id} is None"
                 logger.error(msg)
                 continue
-
-            response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response_for_pages, IssuePostSchema)
-            pages: int = amelia_api.get_count_of_pages(response_data)
+            
+            if pages == 0:
+                response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response_for_pages, IssuePostSchema)
+                pages = amelia_api.get_count_of_pages(response_data)
 
             all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id)
 
@@ -334,7 +247,7 @@ async def sync_archive():
 
                 params = amelia_api.create_json_for_request(APIGrids.ARCHIVE_ISSUES, page=i, service_id=service_id)
                 response = amelia_api.get(APIRoutes.ARCHIVE_ISSUES_WITH_QUERY, params=params)
-                sleep(.5)
+                sleep(delay)
 
                 if response is None:
                     msg = "Current issues response is none"
@@ -430,7 +343,7 @@ async def sync_archive():
 
 @celery_app.task()
 @async_to_sync
-async def sync_current_issues():
+async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
     """
     Get current issues
     """
@@ -454,9 +367,8 @@ async def sync_current_issues():
     users_ids: set[int] = await UserService.get_users_ids(uow)
 
 
-    
-    all_external_ids_issues_seq: Sequence[int] = await IssueService.get_all_external_ids(uow)
-    all_external_ids_issues_set: set[int] = set(all_external_ids_issues_seq)
+    excluded_statuses = ["отказано", "исполнена", "закрыта"]
+    all_external_ids_issues_set: set[int] = await IssueService.get_all_external_ids_with_excluded_statuses(uow, excluded_statuses)
 
     service_ids = [*service_work_categories_mapped]
 
@@ -486,7 +398,7 @@ async def sync_current_issues():
 
                 params = amelia_api.create_json_for_request(APIGrids.CURRENT_ISSUES, page=i, service_id=service_id)
                 response = amelia_api.get(APIRoutes.CURRENT_ISSUES_WITH_QUERY, params=params)
-                sleep(.5)
+                sleep(delay)
 
                 if response is None:
                     msg = "Current issues response is none"
@@ -565,7 +477,6 @@ async def sync_current_issues():
                         issue_id_for_status_sinchronize = []
 
                     current_iss_ids_for_update_and_remove  = []
-                    excluded_statuses = ["отказано", "исполнена", "закрыта"]
                     for issue_id, status in all_issues_with_statuses.items():
                         if status not in excluded_statuses:
                             current_iss_ids_for_update_and_remove.append(issue_id)
@@ -575,7 +486,7 @@ async def sync_current_issues():
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
         return e
-    
+    await sync_archive(pages=5)
     logger.info("Current issues were synchronized")
     return
 
@@ -591,7 +502,7 @@ async def insert_history_statuses(statuses: list[HistoryStatusRecord], uow: Abst
 
 # @celery_app.task()
 # @async_to_sync
-async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | None=None):
+async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | None=None, delay: float=config.API_CALLS_DELAY):
     """
     Sync history statuses
     """
@@ -615,7 +526,7 @@ async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | No
             ext_issue_id = existing_issues_external_ids[i]
             params = amelia_api.create_json_for_request(APIGrids.ISSUES_STATUSES, 1, issue_id=ext_issue_id)
             response = amelia_api.get(APIRoutes.ISSUES_STATUSES_WITH_QUERY, params=params)
-            sleep(0.7)
+            sleep(delay)
 
             if response is None:
                 msg = "Issues history statuses response is none"

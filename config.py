@@ -31,7 +31,8 @@ class Config(BaseSettings):
 
     API_BASE_URL: str = "" 
     API_USER: str = "" 
-    API_USER_PASSWORD: str = ""  
+    API_USER_PASSWORD: str = ""
+    API_CALLS_DELAY: float = 0  
 
     model_config = SettingsConfigDict(env_file=DOTENV)
 
