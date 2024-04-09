@@ -1,4 +1,5 @@
 import json
+from os import sep
 import time
 from typing import Any, TypedDict
 from loguru import logger
@@ -56,7 +57,7 @@ class AmeliaApi():
             self,
             base_url: str = config.API_BASE_URL,
             pagination_per_page:  int = 20,
-            timeout: int = 1000
+            timeout: int = 10
         ):
 
         self.session: Session = Session()
@@ -84,6 +85,7 @@ class AmeliaApi():
                     response = None
                 elif st_code == 401:
                     logger.error(f"Some error: status code is {st_code}, text: {response.text}")
+                    logger.error(response.json(), response.headers, sep="\n\n")
                     time.sleep(20)
                     logger.info("Next try")
                     continue
