@@ -224,7 +224,7 @@ async def sync_tech_passports(delay: float=config.API_CALLS_DELAY):
         for i in range(0, ids_len):
             room_id = rooms_ids[i]
             response = amelia_api.get(APIRoutes.TECH_PASSPORT_WITH_ID + str(room_id))
-            # sleep(delay)
+            sleep(delay)
             if response is None:
                 msg = "Tech passport response is none"
                 logger.error(msg)
@@ -233,7 +233,7 @@ async def sync_tech_passports(delay: float=config.API_CALLS_DELAY):
             tech_passport_validated: TechPassportPostSchema = handle_response_of_tech_passports(response, TechPassportPostSchema, room_id)
             tech_passports.append(tech_passport_validated)
 
-            if i % 10 == 0:
+            if i % 50 == 0:
                 logger.info(f"Sync {i} tech passports")
 
             if i != 0 and (i % 50 == 0 or i == ids_len):
