@@ -8,6 +8,7 @@ from app.schemas.floor_schemas import FloorPostSchema
 from app.schemas.room_schemas import RoomPostSchema
 from app.schemas.tech_passport_schemas import TechPassportPostSchema
 from app.services.building_service import BuildingService
+from app.services.company_service import CompanyService
 from app.services.fasility_service import FacilityService
 from app.services.floor_service import FloorService
 from app.services.room_service import RoomService

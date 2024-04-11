@@ -64,3 +64,12 @@ class CompanyService():
             for c in res:
                 mapping[c.full_name] = c.id
             return mapping
+        
+    @staticmethod
+    async def get_id_title_mapping(uow: AbstractUnitOfWork) -> dict[str, int]:
+        async with uow:
+            res = await uow.company_repo.get_all()
+            mapping = {}
+            for c in res:
+                mapping[c.id] = c.full_name 
+            return mapping

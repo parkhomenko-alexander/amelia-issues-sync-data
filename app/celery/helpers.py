@@ -45,12 +45,13 @@ def handle_response_of_path_params(response: Response, model: Type[T]) -> Return
 
     return ReturnTypePathParams[model](data=response.json())
 
-def handle_response_of_tech_passports(response: Response, model: Type[TechPassportPostSchema], room_id) -> TechPassportPostSchema:
+def handle_response_of_tech_passports(response: Response, model: Type[TechPassportPostSchema], room_id: int) -> TechPassportPostSchema:
     """
         Handling request status and return data
     """
     response_json = response.json()
     fields = response_json["fields"]
+
     tech_passport = TechPassportPostSchema(
         external_id=room_id,
         title = fields[0]["value"],
@@ -62,10 +63,8 @@ def handle_response_of_tech_passports(response: Response, model: Type[TechPasspo
         number_study_places = fields[28]["value"],
 
         company_id = fields[1]["value"],
-        organization_2lvl = fields[1]["value"],
+        organization_2lvl = fields[16]["value"],
         floor_id = fields[2]["value"],
-
     )
 
     return tech_passport
-
