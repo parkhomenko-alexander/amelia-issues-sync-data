@@ -23,8 +23,8 @@ class Issue(Base):
     __tablename__ = "issues"
 
     description: Mapped[str]
-    finish_date_plane: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    dead_line: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finish_date_plane: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dead_line: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rating: Mapped[int | None]
     tel: Mapped[str_350 | None]

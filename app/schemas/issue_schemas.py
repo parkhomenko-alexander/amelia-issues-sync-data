@@ -7,8 +7,8 @@ from app.schemas.general import GeneralSchema
 
 class IssuePostSchema(GeneralSchema):
     description: str | None = Field(None)
-    finish_date_plane: datetime = Field(validation_alias="finish_date_plane")
-    dead_line: datetime = Field(validation_alias="dead_line")
+    finish_date_plane: datetime | None = Field(validation_alias="finish_date_plane")
+    dead_line: datetime | None = Field(validation_alias="dead_line")
     finished_at: datetime | None = Field(None, validation_alias="finished_at")
     rating: Literal[1, 2, 3, 4, 5, None] = Field(None)
     tel: str | None = Field(None)

@@ -11,7 +11,8 @@ class StatusHistoryRepository(SQLAlchemyRepository[StatusHistory]):
     def __init__(self, async_session: AsyncSession):
         super().__init__(async_session, StatusHistory)
 
-    async def get_last_statuses_for_each_issue(self, service_id=None) -> Sequence[Row[tuple[int, str]]]:
+    async def get_last_statuses_for_each_issue(self, service_id: int | None = None, filter_statuses: list[str] = []) -> Sequence[Row[tuple[int, str]]]:
+
         latest_status_subquery: CTE = (
             select(
                 self.model.issue_id,
@@ -21,24 +22,39 @@ class StatusHistoryRepository(SQLAlchemyRepository[StatusHistory]):
             .cte("latest_status_subquery")
         )
 
-        latest_status: Select = (
+        filtered_by_service_issues_ids: Select = (
             select(
-                self.model.issue_id,
-                self.model.status
+                Issue.external_id,
+                Issue.service_id
             )
-            .join(
+        ) 
+
+        if service_id is not None:
+            filtered_by_service_issues_ids = filtered_by_service_issues_ids.where(Issue.service_id == service_id)
+        
+        filtered_by_service_issues_ids_cte: CTE = filtered_by_service_issues_ids.cte("filtered_by_service_issues_ids")
+
+        latest_statuses_stmt = (
+            select(
+                filtered_by_service_issues_ids_cte.c.external_id,
+                self.model.status,
+            )
+            .outerjoin(
                 latest_status_subquery,
-                self.model.external_id == latest_status_subquery.c.latest_id
+                filtered_by_service_issues_ids_cte.c.external_id == latest_status_subquery.c.issue_id
             )
-            .join(
-                Issue, 
-                self.model.issue_id == Issue.external_id
+            .outerjoin(
+                self.model,
+                latest_status_subquery.c.latest_id == self.model.external_id
             )
         )
 
-        if service_id is not None:
-            latest_status = latest_status.where(Issue.service_id == service_id)
+        if filter_statuses != []:
+           latest_statuses_stmt = latest_statuses_stmt.where(
+                (self.model.status.is_(None)) |
+                (self.model.status.in_(filter_statuses)) 
+            )
 
-        res: Result = await self.async_session.execute(latest_status)
+        res: Result = await self.async_session.execute(latest_statuses_stmt)
 
         return res.all()

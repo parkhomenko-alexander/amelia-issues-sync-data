@@ -51,7 +51,7 @@ def handle_response_of_tech_passports(response: Response, model: Type[TechPasspo
     """
     response_json = response.json()
     fields = response_json["fields"]
-
+    org_2lvl = fields[16]["value"]
     tech_passport = TechPassportPostSchema(
         external_id=room_id,
         title = fields[0]["value"],
@@ -63,7 +63,7 @@ def handle_response_of_tech_passports(response: Response, model: Type[TechPasspo
         number_study_places = fields[28]["value"],
 
         company_id = fields[1]["value"],
-        organization_2lvl = fields[16]["value"],
+        organization_2lvl = org_2lvl if org_2lvl != 0 else 29,
         floor_id = fields[2]["value"],
     )
 

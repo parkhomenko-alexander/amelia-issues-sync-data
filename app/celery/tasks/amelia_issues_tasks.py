@@ -216,15 +216,14 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
     users_ids: set[int] = await UserService.get_users_ids(uow)
     
     
-    included_statuses = ["отказано", "исполнена", "закрыта"]
-    all_external_ids_issues_set: set[int] = await IssueService.get_all_external_ids_with_included_statuses(uow, included_statuses)
+    included_statuses = ["отказано", "исполнена", "закрыта", "входящая", "новая", "принята", "взята в работу", "изменить исполнителя", "приостановлена", "возобновлена", "на корректировку"]
 
     service_ids = [*service_work_categories_mapped]
-
+    service_ids.remove(20)
     logger.info("Archive issues are synchronize")
     try:
         issue_service = IssueService(uow)
-        for service_id in service_ids:
+        for service_id in service_ids: 
             issues_for_inserting: list[IssuePostSchema] = []
             issues_for_updating: list[IssuePostSchema] = []
             issue_id_for_status_sinchronize: list[int] = []
@@ -240,7 +239,8 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
                 response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response_for_pages, IssuePostSchema)
                 pages = amelia_api.get_count_of_pages(response_data)
 
-            all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id)
+            all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id, included_statuses)
+            all_external_ids_issues_set_by_service: set[int] = set([*all_issues_with_statuses])
 
             for i in range(1, pages):
                 logger.info(f"Page: {i}, service: {service_id}")
@@ -259,7 +259,6 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
                 for iss in response_data.data:
                     current_issues_status = all_issues_with_statuses.get(iss.external_id, None)
 
-                    # print(iss)
                     state = iss.state
                     building_title = iss.building_title.split("/")[0][:-1]
                     if iss.room_title is None:
@@ -267,7 +266,6 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
                     else:
                         room_id = building_rooms_mapping[building_title].get(iss.room_title)
                     
-                    # на проде не будет проскакивать, для разработки, чтобы не ловить ошибку
                     if iss.declarer_id not in users_ids: 
                         iss.declarer_id = None
                 
@@ -281,9 +279,8 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
 
                     iss.workflow_id = workflow_extenal_id_id_mapping[iss.workflow_id]
                     iss.room_id = room_id
-                    # logger.info(iss)
 
-                    match (current_issues_status, iss.external_id in all_external_ids_issues_set, state == current_issues_status):
+                    match (current_issues_status, iss.external_id in all_external_ids_issues_set_by_service, state == current_issues_status):
                         case (None, False, _):
                             issues_for_inserting.append(iss)
                             issue_id_for_status_sinchronize.append(iss.external_id)
@@ -299,7 +296,7 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
                             all_issues_with_statuses.pop(iss.external_id)
 
                 if i % 10 == 0:
-
+                    
                     if issues_for_inserting != []:
                         await issue_service.bulk_insert(issues_for_inserting) 
                     if issues_for_updating != []:
@@ -311,8 +308,10 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
                     issues_for_updating = []
                     issues_for_inserting = []
 
-                    all_external_ids_issues_seq = await IssueService.get_all_external_ids(uow)
-                    all_external_ids_issues_set = set(all_external_ids_issues_seq)
+                    all_issues_with_statuses = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id, included_statuses)
+                    all_external_ids_issues_set_by_service = set([*all_issues_with_statuses])
+                    logger.info(f"Page: {i}, service: {service_id}")
+
                 elif i == pages - 1:
 
                     if issues_for_inserting != []:
@@ -325,13 +324,10 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
                         await sync_archive_statuses(issue_id_for_status_sinchronize)
                         issue_id_for_status_sinchronize = []
 
-                    current_iss_ids_for_update_and_remove  = []
-                    excluded_statuses = ["отказано", "исполнена", "закрыта"]
-                    for issue_id, status in all_issues_with_statuses.items():
-                        if status not in excluded_statuses:
-                            current_iss_ids_for_update_and_remove.append(issue_id)
+                    logger.info(f"Page: {i}, service: {service_id}, end")
 
-                    await sync_archive_statuses(current_iss_ids_for_update_and_remove)
+                    pages = 0
+                
 
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
@@ -367,11 +363,10 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
     users_ids: set[int] = await UserService.get_users_ids(uow)
 
 
-    excluded_statuses = ["отказано", "исполнена", "закрыта"]
-    all_external_ids_issues_set: set[int] = await IssueService.get_all_external_ids_with_excluded_statuses(uow, excluded_statuses)
+    included_statuses = ["отказано", "исполнена", "закрыта", "входящая", "новая", "принята", "взята в работу", "изменить исполнителя", "приостановлена", "возобновлена", "на корректировку"]
 
     service_ids = [*service_work_categories_mapped]
-
+    service_ids.remove(20)
     logger.info("Current issues are synchronize")
     try:
         issue_service = IssueService(uow)
@@ -390,8 +385,9 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
 
             response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response_for_pages, IssuePostSchema)
             pages: int = amelia_api.get_count_of_pages(response_data)
-
-            all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id)
+            
+            all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id, included_statuses)
+            all_external_ids_issues_set_by_service: set[int] = set([*all_issues_with_statuses])
 
             for i in range(1, pages):
                 logger.info(f"Page: {i}, service: {service_id}")
@@ -434,7 +430,7 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
                     iss.room_id = room_id
                     # logger.info(iss)
 
-                    match (current_issues_status, iss.external_id in all_external_ids_issues_set, state == current_issues_status):
+                    match (current_issues_status, iss.external_id in all_external_ids_issues_set_by_service, state == current_issues_status):
                         case (None, False, _):
                             issues_for_inserting.append(iss)
                             issue_id_for_status_sinchronize.append(iss.external_id)
@@ -450,7 +446,7 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
                             all_issues_with_statuses.pop(iss.external_id)
 
                 if i % 10 == 0:
-
+                    
                     if issues_for_inserting != []:
                         await issue_service.bulk_insert(issues_for_inserting) 
                     if issues_for_updating != []:
@@ -462,8 +458,10 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
                     issues_for_updating = []
                     issues_for_inserting = []
 
-                    all_external_ids_issues_seq = await IssueService.get_all_external_ids(uow)
-                    all_external_ids_issues_set = set(all_external_ids_issues_seq)
+                    all_issues_with_statuses = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id, included_statuses)
+                    all_external_ids_issues_set_by_service = set([*all_issues_with_statuses])
+                    logger.info(f"Page: {i}, service: {service_id}")
+
                 elif i == pages - 1:
 
                     if issues_for_inserting != []:
@@ -476,12 +474,10 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
                         await sync_archive_statuses(issue_id_for_status_sinchronize)
                         issue_id_for_status_sinchronize = []
 
-                    current_iss_ids_for_update_and_remove  = []
-                    for issue_id, status in all_issues_with_statuses.items():
-                        if status not in excluded_statuses:
-                            current_iss_ids_for_update_and_remove.append(issue_id)
+                    logger.info(f"Page: {i}, service: {service_id}, end")
 
-                    await sync_archive_statuses(current_iss_ids_for_update_and_remove)
+                    pages = 0
+
 
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
@@ -521,8 +517,9 @@ async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | No
     try:
         issues_ids_for_removing = []
         statuses: list[HistoryStatusRecord] = []
-        for i in range(0, len(existing_issues_external_ids)):
-            logger.info(f"Issues statuses page: {i}")
+        len_existing_issues_external_ids = len(existing_issues_external_ids)
+        for i in range(0, len_existing_issues_external_ids):
+            
             ext_issue_id = existing_issues_external_ids[i]
             params = amelia_api.create_json_for_request(APIGrids.ISSUES_STATUSES, 1, issue_id=ext_issue_id)
             response = amelia_api.get(APIRoutes.ISSUES_STATUSES_WITH_QUERY, params=params)
@@ -542,15 +539,17 @@ async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | No
                 resp_status.issue_id = ext_issue_id
                 statuses.append(resp_status)
 
-            if i % 100 == 0 and i != 0:
+            if i % 50 == 0 and i != 0:
                 await insert_history_statuses(statuses, uow)
+                logger.info(f"Issues statuses: {i}")
                 statuses = []
 
         if statuses != []:
             await insert_history_statuses(statuses, uow)
         if issues_ids_for_removing != []:
             await issues_service.bulk_delete(issues_ids_for_removing)
-            
+
+        logger.info(f"Issues statuses: {len_existing_issues_external_ids}")   
               
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
