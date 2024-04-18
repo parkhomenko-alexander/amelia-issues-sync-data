@@ -219,7 +219,7 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
     included_statuses = ["отказано", "исполнена", "закрыта", "входящая", "новая", "принята", "взята в работу", "изменить исполнителя", "приостановлена", "возобновлена", "на корректировку"]
 
     service_ids = [*service_work_categories_mapped]
-    service_ids.remove(20)
+    # service_ids.remove(20)
     logger.info("Archive issues are synchronize")
     try:
         issue_service = IssueService(uow)
@@ -366,7 +366,7 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
     included_statuses = ["отказано", "исполнена", "закрыта", "входящая", "новая", "принята", "взята в работу", "изменить исполнителя", "приостановлена", "возобновлена", "на корректировку"]
 
     service_ids = [*service_work_categories_mapped]
-    service_ids.remove(20)
+    # service_ids.remove(20)
     logger.info("Current issues are synchronize")
     try:
         issue_service = IssueService(uow)
