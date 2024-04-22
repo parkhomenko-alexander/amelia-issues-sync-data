@@ -193,7 +193,7 @@ async def sync_work_categories():
 
 @celery_app.task()
 @async_to_sync
-async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
+async def sync_archive(delay: float=config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: tuple[int, int] = (0, 0)):
     """
     Get archive
     """
@@ -218,8 +218,12 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
     
     included_statuses = ["отказано", "исполнена", "закрыта", "входящая", "новая", "принята", "взята в работу", "изменить исполнителя", "приостановлена", "возобновлена", "на корректировку"]
 
-    service_ids = [*service_work_categories_mapped]
-    # service_ids.remove(20)
+    if service_external_ids == []:
+        service_ids = [*service_work_categories_mapped]
+        service_ids.remove(20)
+    else:
+        service_ids = service_external_ids
+
     logger.info("Archive issues are synchronize")
     try:
         issue_service = IssueService(uow)
@@ -235,14 +239,20 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
                 logger.error(msg)
                 continue
             
-            if pages == 0:
+            if borders[1] == 0:
                 response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response_for_pages, IssuePostSchema)
-                pages = amelia_api.get_count_of_pages(response_data)
+                end_page = amelia_api.get_count_of_pages(response_data)
+            else:
+                end_page = borders[1]    
+
+            start_page = 1
+            if borders[0] != 0:
+                start_page = borders[0]
 
             all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id, included_statuses)
             all_external_ids_issues_set_by_service: set[int] = set([*all_issues_with_statuses])
 
-            for i in range(1, pages):
+            for i in range(start_page, end_page):
                 logger.info(f"Page: {i}, service: {service_id}")
 
                 params = amelia_api.create_json_for_request(APIGrids.ARCHIVE_ISSUES, page=i, service_id=service_id)
@@ -312,7 +322,7 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
                     all_external_ids_issues_set_by_service = set([*all_issues_with_statuses])
                     logger.info(f"Page: {i}, service: {service_id}")
 
-                elif i == pages - 1:
+                elif i == end_page - 1:
 
                     if issues_for_inserting != []:
                         await issue_service.bulk_insert(issues_for_inserting)
@@ -326,7 +336,7 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
 
                     logger.info(f"Page: {i}, service: {service_id}, end")
 
-                    pages = 0
+                    end_page = 0
                 
 
     except Exception as e:
@@ -334,12 +344,11 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, pages: int=0):
         return e
     
     logger.info("Archive issues were synchronized")
-    await sync_archive_statuses()
     return
 
 @celery_app.task()
 @async_to_sync
-async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
+async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: tuple[int, int] = (0, 0)):
     """
     Get current issues
     """
@@ -365,9 +374,14 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
 
     included_statuses = ["отказано", "исполнена", "закрыта", "входящая", "новая", "принята", "взята в работу", "изменить исполнителя", "приостановлена", "возобновлена", "на корректировку"]
 
-    service_ids = [*service_work_categories_mapped]
-    # service_ids.remove(20)
+    if service_external_ids == []:
+        service_ids = [*service_work_categories_mapped]
+        service_ids.remove(20)
+    else:
+        service_ids = service_external_ids
+
     logger.info("Current issues are synchronize")
+
     try:
         issue_service = IssueService(uow)
         
@@ -383,13 +397,20 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
                 logger.error(msg)
                 continue
 
-            response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response_for_pages, IssuePostSchema)
-            pages: int = amelia_api.get_count_of_pages(response_data)
-            
+            if borders[1] == 0:
+                response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response_for_pages, IssuePostSchema)
+                end_page = amelia_api.get_count_of_pages(response_data)
+            else:
+                end_page = borders[1]    
+
+            start_page = 1
+            if borders[0] != 0:
+                start_page = borders[0]
+
             all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id, included_statuses)
             all_external_ids_issues_set_by_service: set[int] = set([*all_issues_with_statuses])
 
-            for i in range(1, pages):
+            for i in range(start_page, end_page):
                 logger.info(f"Page: {i}, service: {service_id}")
 
                 params = amelia_api.create_json_for_request(APIGrids.CURRENT_ISSUES, page=i, service_id=service_id)
@@ -462,7 +483,7 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
                     all_external_ids_issues_set_by_service = set([*all_issues_with_statuses])
                     logger.info(f"Page: {i}, service: {service_id}")
 
-                elif i == pages - 1:
+                elif i == end_page - 1:
 
                     if issues_for_inserting != []:
                         await issue_service.bulk_insert(issues_for_inserting)
@@ -476,13 +497,13 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY):
 
                     logger.info(f"Page: {i}, service: {service_id}, end")
 
-                    pages = 0
+                    end_page = 0
 
 
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
         return e
-    await sync_archive(pages=5)
+    await sync_archive(borders=(1, 6))
     logger.info("Current issues were synchronized")
     return
 
@@ -496,9 +517,8 @@ async def insert_history_statuses(statuses: list[HistoryStatusRecord], uow: Abst
     if elements_to_insert != []:
         await history_status_service.bulk_insert(elements_to_insert)
 
-# @celery_app.task()
-# @async_to_sync
-async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | None=None, delay: float=config.API_CALLS_DELAY):
+
+async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | None = None, delay: float = config.API_CALLS_DELAY):
     """
     Sync history statuses
     """

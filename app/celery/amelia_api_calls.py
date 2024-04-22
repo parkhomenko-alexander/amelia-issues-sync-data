@@ -239,5 +239,8 @@ class AmeliaApi():
     
     def get_count_of_pages(self, data: ReturnTypeFromJsonQuery):
         count_objects: int = data.count
+
+        if count_objects == 0:
+            return 1
         pages: int = count_objects // self.get_pagination()["per_page"] + 2
         return pages
