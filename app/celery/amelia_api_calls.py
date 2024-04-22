@@ -87,6 +87,7 @@ class AmeliaApi():
                     logger.error(f"Some error: status code is {st_code}, text: {response.text}")
                     logger.error(response.json(), response.headers, sep="\n\n")
                     time.sleep(20)
+                    self.auth()
                     logger.info("Next try")
                     continue
                 flag = False
