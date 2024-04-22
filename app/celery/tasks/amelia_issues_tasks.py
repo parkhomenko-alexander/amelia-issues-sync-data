@@ -253,7 +253,6 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, service_external_ids
             all_external_ids_issues_set_by_service: set[int] = set([*all_issues_with_statuses])
 
             for i in range(start_page, end_page):
-                logger.info(f"Page: {i}, service: {service_id}")
 
                 params = amelia_api.create_json_for_request(APIGrids.ARCHIVE_ISSUES, page=i, service_id=service_id)
                 response = amelia_api.get(APIRoutes.ARCHIVE_ISSUES_WITH_QUERY, params=params)
@@ -411,7 +410,7 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_exter
             all_external_ids_issues_set_by_service: set[int] = set([*all_issues_with_statuses])
 
             for i in range(start_page, end_page):
-                logger.info(f"Page: {i}, service: {service_id}")
+                
 
                 params = amelia_api.create_json_for_request(APIGrids.CURRENT_ISSUES, page=i, service_id=service_id)
                 response = amelia_api.get(APIRoutes.CURRENT_ISSUES_WITH_QUERY, params=params)
