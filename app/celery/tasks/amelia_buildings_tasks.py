@@ -230,14 +230,14 @@ async def sync_tech_passports(delay: float=config.API_CALLS_DELAY):
                 msg = "Tech passport response is none"
                 logger.error(msg)
                 return msg
-    
+            
             tech_passport_validated: TechPassportPostSchema = handle_response_of_tech_passports(response, TechPassportPostSchema, room_id)
             tech_passports.append(tech_passport_validated)
 
-            if i % 50 == 0:
+            if i % 50 == 0 and i != 0:
                 logger.info(f"Sync {i} tech passports")
 
-            if i != 0 and (i % 50 == 0 or i == ids_len):
+            if i != 0 and (i % 50 == 0 or i == ids_len - 1):
                 elements_to_insert, elements_to_update = [], []
                 external_ids = [tech_passport.external_id for tech_passport in tech_passports]
                 existing_external_ids = await tech_passport_service.get_existing_external_ids(external_ids)
