@@ -90,6 +90,7 @@ class AmeliaApi():
                     continue
                 elif st_code == 404:
                     logger.error(f"Some error: status code is {st_code}, text: {response.text}")
+                    return None
                 flag = False
             except Exception as e:
                     logger.exception("Some error: ", e)
