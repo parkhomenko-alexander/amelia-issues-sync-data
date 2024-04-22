@@ -229,7 +229,7 @@ async def sync_tech_passports(delay: float=config.API_CALLS_DELAY):
             if response is None:
                 msg = "Tech passport response is none"
                 logger.error(msg)
-                return msg
+                continue
             
             tech_passport_validated: TechPassportPostSchema = handle_response_of_tech_passports(response, TechPassportPostSchema, room_id)
             tech_passports.append(tech_passport_validated)
