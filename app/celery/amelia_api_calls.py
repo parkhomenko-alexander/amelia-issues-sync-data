@@ -80,16 +80,16 @@ class AmeliaApi():
             try:
                 response = self.session.get(self.base_url + route, params=params, timeout=self.timeout)
                 st_code = response.status_code 
-                if st_code != 200:
-                    logger.error(f"Some error: status code is {st_code}, text: {response.text}")
-                    response = None
-                elif st_code == 401:
+                
+                if st_code == 401:
                     logger.error(f"Some error: status code is {st_code}, text: {response.text}")
                     logger.error(response.json(), response.headers, sep="\n\n")
                     time.sleep(20)
                     self.auth()
                     logger.info("Next try")
                     continue
+                elif st_code == 404:
+                    logger.error(f"Some error: status code is {st_code}, text: {response.text}")
                 flag = False
             except Exception as e:
                     logger.exception("Some error: ", e)
