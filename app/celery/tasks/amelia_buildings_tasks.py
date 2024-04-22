@@ -215,7 +215,8 @@ async def sync_tech_passports(delay: float=config.API_CALLS_DELAY):
     amelia_api = AmeliaApi()
     amelia_api.auth()
 
-    rooms_ids = await RoomService.rooms_ids(uow)
+    # rooms_ids = await RoomService.rooms_ids(uow)
+    rooms_ids = [48071, 48070]
     ids_len = len(rooms_ids)
 
     logger.info("Tech passports are synchronize")
