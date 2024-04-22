@@ -143,7 +143,7 @@ async def sync_floors():
 
 @celery_app.task()
 @async_to_sync
-async def sync_rooms():
+async def sync_rooms(delay: float=config.API_CALLS_DELAY):
     """
         Get rooms
     """
@@ -173,7 +173,7 @@ async def sync_rooms():
         for i in range(1, pages):
             params = amelia_api.create_json_for_request(APIGrids.ROOMS, i)
             response = amelia_api.get(APIRoutes.ROOMS_WITH_QUERY, params=params)
-            sleep(.4)
+            sleep(delay)
             if response is None:
                 msg = "Rooms response is none"
                 logger.error(msg)
