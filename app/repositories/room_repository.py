@@ -9,39 +9,48 @@ from app.db.models.building import Building
 from app.db.models.tech_passport import TechPassport
 from app.repositories.abstract_repository import SQLAlchemyRepository
 
+from sqlalchemy.orm import aliased
+
 
 class RoomRepository(SQLAlchemyRepository[Room]):
     def __init__(self, async_session: AsyncSession):
         super().__init__(async_session, Room)
 
-    async def get_roooms_floors_building_techpassport(self) -> Sequence[Row[tuple[Room, Floor, Building, TechPassport]]]:
+    async def get_roooms_floors_building_techpassport(self) -> Sequence[Row[tuple[Room, Floor, Building, TechPassport, Company, Company]]]:
+        CopmanyAlias1 = aliased(Company)
+        CopmanyAlias2 = aliased(Company)
         stmt = (
             select(
                 self.model,
                 Floor,
                 Building,
                 TechPassport,
-                Company
+                CopmanyAlias1,
+                CopmanyAlias2
             )
             .join(
                 Floor,
-                self.model.floor_id == Floor.id
+                self.model.floor_id==Floor.id
             )
             .join(
                 Building,
-                Floor.building_id == Building.id 
-            )
-            .join(
-                TechPassport,
-                self.model.external_id == TechPassport.external_id
+                Floor.building_id==Building.id 
             )
             .outerjoin(
-                Company,
-                TechPassport.company_id==Company.id
+                TechPassport,
+                self.model.external_id==TechPassport.external_id
+            )
+            .outerjoin(
+                CopmanyAlias1,
+                TechPassport.company_id==CopmanyAlias1.external_id
+            )
+            .outerjoin(
+                CopmanyAlias2,
+                TechPassport.organization_2lvl==CopmanyAlias2.id
             )
         )
 
         res: Result = await self.async_session.execute(stmt)
-        all_rows: Sequence[Row[tuple[Room, Floor, Building, TechPassport]]] = res.all() 
+        all_rows = res.all() 
 
         return all_rows

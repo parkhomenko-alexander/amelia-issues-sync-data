@@ -79,6 +79,8 @@ class RoomService():
                 building: Building = row[2]
                 tech_passport: TechPassport = row[3]
                 company: Company = row[4]
+                company_2lvl: Company = row[5]
+
                 
                 new_row = {}
             
@@ -89,13 +91,14 @@ class RoomService():
                 new_row["ID помещения"]= room.external_id
                 new_row["Название помещения"]= room.title
                 new_row["№ помещения"]= room.title.split(" ")[0]
-                new_row["Площадь помещения"]= tech_passport.square
-                new_row["Вид объекта"]= tech_passport.object_view
-                new_row["Класс объекта"]= tech_passport.object_class
-                new_row["Тип объекта"]= tech_passport.object_type
-                new_row["Институт/Школа/Проректор"]= company.full_name if company is not None else "" 	
-                new_row["Наименование структурного подразделения"]= tech_passport.organization_3lvl
-                new_row["Количество учебных мест (всего)"]= tech_passport.number_study_places
+                new_row["Организация"]= company.full_name if company is not None else ""
+                new_row["Площадь помещения"]= tech_passport.square if tech_passport is not None else ""
+                new_row["Вид объекта"]= tech_passport.object_view if tech_passport is not None else ""
+                new_row["Класс объекта"]= tech_passport.object_class if tech_passport is not None else ""
+                new_row["Тип объекта"]= tech_passport.object_type if tech_passport is not None else ""
+                new_row["Институт/Школа/Проректор"]= company_2lvl.full_name if company_2lvl is not None else "" 	
+                new_row["Наименование структурного подразделения"]= tech_passport.organization_3lvl if tech_passport is not None else ""
+                new_row["Количество учебных мест (всего)"]= tech_passport.number_study_places if tech_passport is not None else ""
 
                 lst.append(new_row)
 
