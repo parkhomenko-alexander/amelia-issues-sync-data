@@ -78,7 +78,6 @@ class SQLAlchemyRepository(AbstractRepository[T]):
 
         return res.all()
 
-
     async def find_one(self, **filter_by):
         stmt = select(self.model).filter_by(**filter_by)
         res = await self.async_session.execute(stmt)
@@ -143,23 +142,3 @@ class SQLAlchemyRepository(AbstractRepository[T]):
         )
         res = await self.async_session.execute(stmt)
         return 0
-
-    # async def bulk_insert_by_external_ids(self, data: list[dict]):
-    #     for item in data:
-    #         stmt = (
-    #             update(self.model).
-    #             where(self.model.external_id == item[""]).
-    #             values(**item)
-    #         )
-        
-    #         await self.async_session.execute(stmt)
-         
-    #     return 0
-    #     return 0
-
-    # async def get_id_from_external_ids(self, data: list[int]) -> list[int]:
-    #     stmt = (
-    #         select(self.model)
-    #     )
-
-    #     return [1]
