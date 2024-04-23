@@ -46,7 +46,7 @@ class RoomRepository(SQLAlchemyRepository[Room]):
             )
             .outerjoin(
                 CopmanyAlias2,
-                TechPassport.organization_2lvl==CopmanyAlias2.id
+                TechPassport.organization_2lvl==CopmanyAlias2.external_id
             )
         )
 
