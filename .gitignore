@@ -120,3 +120,4 @@ app/celery/celerybeat-schedule.dat
 app/celery/celerybeat-schedule.dir
 
 
+reports/*
