@@ -136,6 +136,13 @@ class SQLAlchemyRepository(AbstractRepository[T]):
         res = await self.async_session.execute(stmt)
         return res.scalars().all()
     
+    async def get_all_external_ids_filtered(self, **kwargs) -> Sequence[int]:
+        stmt = (
+            select(self.model.external_id).filter_by(**kwargs)
+        )
+        res = await self.async_session.execute(stmt)
+        return res.scalars().all()
+    
     async def bulk_delete(self, ids_lsit: list[int]) -> int:
         stmt = (
             delete(self.model).where(self.model.external_id.in_(ids_lsit))

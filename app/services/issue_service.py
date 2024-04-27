@@ -62,12 +62,24 @@ class IssueService():
         return 0
 
     @staticmethod
-    async def get_all_external_ids(uow: AbstractUnitOfWork) -> Sequence[int]:
+    async def get_all_external_ids_by_service(uow: AbstractUnitOfWork, service_ids: list[int] | None = None) -> Sequence[int]:
         async with uow:
-            return await uow.issues_repo.get_all_external_ids()
+            if service_ids is not None:
+                res: Sequence[int] = []
+                for ser_id in service_ids:
+                    ids_by_service =  await uow.issues_repo.get_all_external_ids_filtered(service_id=ser_id)   
+                    res.extend(ids_by_service)
+                return res
+            else:
+                return await uow.issues_repo.get_all_external_ids()
         
     @staticmethod
     async def get_all_external_ids_with_included_statuses(uow: AbstractUnitOfWork, service_id: int, statueses: list[str] = []) -> set[int]:
         async with uow:
             res = await uow.issues_repo.get_all_external_ids_with_included_statuses(service_id, statueses)
             return set(res)
+
+    @staticmethod
+    async def get_all_external_ids(uow: AbstractUnitOfWork) -> Sequence[int]:
+        async with uow:
+            return await uow.issues_repo.get_all_external_ids()

@@ -193,7 +193,7 @@ async def sync_work_categories():
 
 @celery_app.task()
 @async_to_sync
-async def sync_archive(delay: float=config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: tuple[int, int] = (0, 0)):
+async def sync_archive(delay: float=config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: tuple[int, int] | None = None):
     """
     Get archive
     """
@@ -224,6 +224,8 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, service_external_ids
     else:
         service_ids = service_external_ids
 
+    all_external_ids_issues_set: set[int] = set(await IssueService.get_all_external_ids(uow))
+
     logger.info("Archive issues are synchronize")
     try:
         issue_service = IssueService(uow)
@@ -239,18 +241,15 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, service_external_ids
                 logger.error(msg)
                 continue
             
-            if borders[1] == 0:
+            if borders is None:
                 response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response_for_pages, IssuePostSchema)
                 end_page = amelia_api.get_count_of_pages(response_data)
+                start_page = 1
             else:
+                start_page = borders[0]
                 end_page = borders[1]    
 
-            start_page = 1
-            if borders[0] != 0:
-                start_page = borders[0]
-
             all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id, included_statuses)
-            all_external_ids_issues_set_by_service: set[int] = set([*all_issues_with_statuses])
 
             for i in range(start_page, end_page):
 
@@ -289,7 +288,7 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, service_external_ids
                     iss.workflow_id = workflow_extenal_id_id_mapping[iss.workflow_id]
                     iss.room_id = room_id
 
-                    match (current_issues_status, iss.external_id in all_external_ids_issues_set_by_service, state == current_issues_status):
+                    match (current_issues_status, iss.external_id in all_external_ids_issues_set, state == current_issues_status):
                         case (None, False, _):
                             issues_for_inserting.append(iss)
                             issue_id_for_status_sinchronize.append(iss.external_id)
@@ -347,7 +346,7 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, service_external_ids
 
 @celery_app.task()
 @async_to_sync
-async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: tuple[int, int] = (0, 0)):
+async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: tuple[int, int] | None = None):
     """
     Get current issues
     """
@@ -378,8 +377,9 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_exter
         service_ids.remove(20)
     else:
         service_ids = service_external_ids
-
     logger.info("Current issues are synchronize")
+
+    all_external_ids_issues_set: set[int] = set(await IssueService.get_all_external_ids(uow))
 
     try:
         issue_service = IssueService(uow)
@@ -396,18 +396,15 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_exter
                 logger.error(msg)
                 continue
 
-            if borders[1] == 0:
+            if borders is None:
                 response_data: ReturnTypeFromJsonQuery[IssuePostSchema] = handle_response_of_json_query(response_for_pages, IssuePostSchema)
                 end_page = amelia_api.get_count_of_pages(response_data)
+                start_page = 1
             else:
+                start_page = borders[0]
                 end_page = borders[1]    
 
-            start_page = 1
-            if borders[0] != 0:
-                start_page = borders[0]
-
             all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id, included_statuses)
-            all_external_ids_issues_set_by_service: set[int] = set([*all_issues_with_statuses])
 
             for i in range(start_page, end_page):
                 
@@ -450,7 +447,7 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_exter
                     iss.room_id = room_id
                     # logger.info(iss)
 
-                    match (current_issues_status, iss.external_id in all_external_ids_issues_set_by_service, state == current_issues_status):
+                    match (current_issues_status, iss.external_id in all_external_ids_issues_set, state == current_issues_status):
                         case (None, False, _):
                             issues_for_inserting.append(iss)
                             issue_id_for_status_sinchronize.append(iss.external_id)

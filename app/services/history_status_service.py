@@ -53,3 +53,4 @@ class HistoryStatusService():
                 res[row[0]] = row[1]
         return res
 
+
