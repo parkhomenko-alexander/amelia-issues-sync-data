@@ -329,7 +329,7 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, service_external_ids
                         await issue_service.bulk_update(issues_for_updating)
                         issues_for_updating = []
                     if issue_id_for_status_sinchronize != []:
-                        await sync_archive_statuses(issue_id_for_status_sinchronize)
+                        await sync_archive_statuses(issue_id_for_status_sinchronize, delay)
                         issue_id_for_status_sinchronize = []
 
                     logger.info(f"Page: {i}, service: {service_id}, end")
@@ -469,7 +469,7 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_exter
                     if issues_for_updating != []:
                         await issue_service.bulk_update(issues_for_updating)
                     if issue_id_for_status_sinchronize != []:
-                        await sync_archive_statuses(issue_id_for_status_sinchronize) 
+                        await sync_archive_statuses(issue_id_for_status_sinchronize, delay) 
 
                     issue_id_for_status_sinchronize = []
                     issues_for_updating = []
