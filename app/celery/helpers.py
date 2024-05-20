@@ -1,6 +1,6 @@
 import asyncio
 from functools import wraps
-from typing import Any, Generic, Type, TypedDict, TypeVar
+from typing import Any, Generic, Type, TypeVar
 from pydantic import BaseModel
 
 from requests import Response
