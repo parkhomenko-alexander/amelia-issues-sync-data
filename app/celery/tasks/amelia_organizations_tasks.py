@@ -17,6 +17,7 @@ from app.utils.unit_of_work import SqlAlchemyUnitOfWork
 
 
 @celery_app.task()
+@async_to_sync
 async def sync_ficilities():
     """
         Get facilities
@@ -55,6 +56,7 @@ async def sync_ficilities():
     return msg
 
 @celery_app.task()
+@async_to_sync
 async def sync_companies():
     """
         Get companies
@@ -115,6 +117,7 @@ async def sync_companies():
     return
 
 @celery_app.task()
+@async_to_sync
 async def sync_priorities():
     """
     Get priorities
@@ -159,6 +162,7 @@ async def sync_priorities():
     return msg
 
 @celery_app.task()
+@async_to_sync
 async def sync_workflows():
     """
     Get priorities
@@ -201,6 +205,7 @@ async def sync_workflows():
     return msg
 
 @celery_app.task()
+@async_to_sync
 async def sync_users():
     """
     Sync users
