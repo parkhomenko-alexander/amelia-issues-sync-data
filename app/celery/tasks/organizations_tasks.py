@@ -16,7 +16,7 @@ from app.services.fasility_service import FacilityService
 from app.utils.unit_of_work import SqlAlchemyUnitOfWork
 
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
 async def sync_ficilities():
     """
@@ -55,7 +55,7 @@ async def sync_ficilities():
     logger.info(msg) 
     return msg
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
 async def sync_companies():
     """
@@ -116,7 +116,7 @@ async def sync_companies():
     logger.info("Companies were synchronized")
     return
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
 async def sync_priorities():
     """
@@ -161,7 +161,7 @@ async def sync_priorities():
     logger.info(msg) 
     return msg
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
 async def sync_workflows():
     """
@@ -204,7 +204,7 @@ async def sync_workflows():
     logger.info(msg) 
     return msg
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
 async def sync_users():
     """

@@ -1,5 +1,6 @@
 from time import sleep
-from typing import Sequence
+from typing import Sequence, cast
+from celery import Task, chain, chord, group
 from requests import Response
 from app.schemas.issue_schemas import IssuePostSchema
 from app.schemas.priority_schemas import PriorityPostSchema
@@ -18,14 +19,14 @@ from app.services.user_service import UserService
 from app.services.work_category_service import WorkCategoryService
 from app.services.workflow_service import WorkflowService
 from logger import logger
-from app.celery.amelia_api_calls import APIGrids, APIRoutes, AmeliaApi
+from app.celery.amelia_api_calls import APIGrids, APIRoutes, AmeliaApi, Borders
 from app.celery.celery_app import celery_app
 from app.celery.helpers import ReturnTypeFromJsonQuery, ReturnTypePathParams, async_to_sync, handle_response_of_json_query, handle_response_of_path_params
 from app.services.fasility_service import FacilityService
 from app.utils.unit_of_work import AbstractUnitOfWork, SqlAlchemyUnitOfWork
 from config import config
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
 async def sync_statuses():
     """
@@ -71,7 +72,7 @@ async def sync_statuses():
     logger.info(msg) 
     return msg
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
 async def sync_services():
     """
@@ -130,7 +131,7 @@ async def sync_services():
     logger.info("Services were synchronized")
     return
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
 async def sync_work_categories():
     """
@@ -191,9 +192,9 @@ async def sync_work_categories():
     logger.info("Services were synchronized")
     return
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
-async def sync_archive(delay: float=config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: tuple[int, int] | None = None):
+async def sync_archive(delay: float = config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: Borders | None = None):
     """
     Get archive
     """
@@ -246,8 +247,8 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, service_external_ids
                 end_page = amelia_api.get_count_of_pages(response_data)
                 start_page = 1
             else:
-                start_page = borders[0]
-                end_page = borders[1]    
+                start_page = borders["start"]
+                end_page = borders["end"]
 
             all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id, included_statuses)
 
@@ -335,18 +336,17 @@ async def sync_archive(delay: float=config.API_CALLS_DELAY, service_external_ids
                     logger.info(f"Page: {i}, service: {service_id}, end")
 
                     end_page = 0
-                
-
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
         return e
     
-    logger.info("Archive issues were synchronized")
-    return
+    return_msg = "Archive issues were synchronized"
+    logger.info(return_msg)
+    return return_msg
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
-async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: tuple[int, int] | None = None):
+async def sync_current_issues(delay: float = config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: Borders | None = None):
     """
     Get current issues
     """
@@ -401,8 +401,8 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_exter
                 end_page = amelia_api.get_count_of_pages(response_data)
                 start_page = 1
             else:
-                start_page = borders[0]
-                end_page = borders[1]    
+                start_page = borders["start"]
+                end_page = borders["end"]
 
             all_issues_with_statuses: dict[int, str] = await HistoryStatusService.get_external_issues_id_with_status_title(uow, service_id, included_statuses)
 
@@ -423,7 +423,6 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_exter
                 for iss in response_data.data:
                     current_issues_status = all_issues_with_statuses.get(iss.external_id, None)
 
-                    # print(iss)
                     state = iss.state
                     building_title = iss.building_title.split("/")[0][:-1]
                     if iss.room_title is None:
@@ -445,7 +444,6 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_exter
 
                     iss.workflow_id = workflow_extenal_id_id_mapping[iss.workflow_id]
                     iss.room_id = room_id
-                    # logger.info(iss)
 
                     match (current_issues_status, iss.external_id in all_external_ids_issues_set, state == current_issues_status):
                         case (None, False, _):
@@ -499,9 +497,9 @@ async def sync_current_issues(delay: float=config.API_CALLS_DELAY, service_exter
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
         return e
-    await sync_archive(borders=(1, 6))
-    logger.info("Current issues were synchronized")
-    return
+    return_msg = "Current issues were synchronized"
+    logger.info(return_msg)
+    return return_msg
 
 
 async def insert_history_statuses(statuses: list[HistoryStatusRecord], uow: AbstractUnitOfWork):
@@ -573,3 +571,8 @@ async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | No
     
     logger.info("Issues history statuses were synchronized")
     return
+
+
+
+    
+

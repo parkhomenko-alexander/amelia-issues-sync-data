@@ -1,3 +1,4 @@
+from ast import Tuple
 import asyncio
 from functools import wraps
 from typing import Any, Generic, Type, TypeVar
@@ -11,11 +12,18 @@ from app.schemas.tech_passport_schemas import TechPassportPostSchema
 def async_to_sync(task_func):
     @wraps(task_func)
     def wrapper(*args, **kwargs):
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is None or not loop.is_running():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-        return loop.run_until_complete(task_func(*args, **kwargs))
+            return loop.run_until_complete(task_func(*args, **kwargs))
+        else:
+            return asyncio.run(task_func(*args, **kwargs))
+
     return wrapper
 
 
@@ -68,3 +76,4 @@ def handle_response_of_tech_passports(response: Response, model: Type[TechPasspo
     )
 
     return tech_passport
+

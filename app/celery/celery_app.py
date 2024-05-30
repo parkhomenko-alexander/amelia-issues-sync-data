@@ -1,6 +1,6 @@
 from celery import Celery
 from celery.schedules import crontab
-from  config import config
+from config import config
 
 
 celery_app = Celery(
@@ -8,15 +8,16 @@ celery_app = Celery(
     broker=config.CELERY_BROKER_URL,
     backend=config.CELERY_RESULT_BACKEND,
     include=[
-        "tasks.amelia_organizations_tasks",
-        "tasks.amelia_buildings_tasks",
-        "tasks.amelia_issues_tasks"
+        "tasks.issues_tasks.callback",
+        "tasks.issues_tasks.orchestrator",
+        "tasks.issues_tasks.issues_tasks",
+
+        "tasks.buildings_tasks",
+        "tasks.organizations_tasks",
     ],
     broker_connection_retry=True,
     broker_connection_retry_on_startup=True,
 )
-
-
 
 celery_app.conf.beat_schedule = {
     # "get_facilities": {

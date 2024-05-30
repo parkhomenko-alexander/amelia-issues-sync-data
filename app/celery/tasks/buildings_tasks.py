@@ -18,7 +18,7 @@ from app.celery.celery_app import celery_app
 from config import config
 
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
 async def sync_buildings():
     """
@@ -77,7 +77,7 @@ async def sync_buildings():
     logger.info("Buildings were synchronized")
     return
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
 async def sync_floors():
     """
@@ -141,7 +141,7 @@ async def sync_floors():
     logger.info("Floors were synchronized")
     return
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
 async def sync_rooms(delay: float=config.API_CALLS_DELAY):
     """
@@ -204,7 +204,7 @@ async def sync_rooms(delay: float=config.API_CALLS_DELAY):
     logger.info("Rooms were synchronized")
     return
 
-@celery_app.task()
+@celery_app.task
 @async_to_sync
 async def sync_tech_passports(delay: float = config.API_CALLS_DELAY, building_ids: list[int] | None = None):
     """

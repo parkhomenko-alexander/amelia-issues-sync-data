@@ -10,7 +10,7 @@ class IssuePostSchema(GeneralSchema):
     finish_date_plane: datetime | None = Field(validation_alias="finish_date_plane")
     dead_line: datetime | None = Field(validation_alias="dead_line")
     finished_at: datetime | None = Field(None, validation_alias="finished_at")
-    rating: Literal[1, 2, 3, 4, 5, None] = Field(None)
+    rating: Literal[0, 1, 2, 3, 4, 5, None] = Field(None)
     tel: str | None = Field(None)
     email: str | None = Field(None)
     

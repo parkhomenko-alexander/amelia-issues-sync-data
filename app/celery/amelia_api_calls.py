@@ -1,6 +1,7 @@
+from dataclasses import dataclass
 import json
 from os import sep
-import time
+from time import sleep
 from typing import Any, TypedDict
 from loguru import logger
 from requests import Session, Response, post, get
@@ -51,6 +52,10 @@ class APIGrids(Enum):
 class Pagination(TypedDict):
     per_page: int
 
+class Borders(TypedDict):
+    start: int
+    end: int
+
 class AmeliaApi():
 
     def __init__(
@@ -84,7 +89,7 @@ class AmeliaApi():
                 if st_code == 401:
                     logger.error(f"Some error: status code is {st_code}, text: {response.text}")
                     logger.error(response.json(), response.headers, sep="\n\n")
-                    time.sleep(20)
+                    sleep(20)
                     self.auth()
                     logger.info("Next try")
                     continue
@@ -94,8 +99,8 @@ class AmeliaApi():
                 flag = False
             except Exception as e:
                     logger.exception("Some error: ", e)
-                    time.sleep(1)
-                    continue    
+                    sleep(config.API_CALLS_DELAY)
+                    continue
         return response    
             
     
@@ -232,7 +237,7 @@ class AmeliaApi():
                     self.session.headers.update(self.headers)
             except Exception as e:
                 print("Some error: ", e)
-                time.sleep(1)
+                sleep(config.API_CALLS_DELAY)
                 continue
         return 0
 
