@@ -77,4 +77,12 @@ celery_app.conf.beat_schedule = {
     #     "task": "tasks.amelia_issues_tasks.sync_current_issues", 
     #     "schedule": crontab(minute="*/50")
     # },
+
+    "sync_current_archive_issues": {
+        "task": '''celery -A celery_app call tasks.issues_tasks.orchestrator.sync_issues_current_archive_chord_job --kwargs="{\"delay\": 3, \"service_external_ids\": [3, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19], \"archive_borders\": {\"start\": 1, \"end\": 30}}"''',
+        "schedule": [
+            crontab(minute="0", hour="*/3"),
+            crontab(minute="30", hour="1-23/3")        
+        ]
+    }
 }
