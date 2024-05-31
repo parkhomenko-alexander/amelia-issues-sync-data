@@ -18,7 +18,7 @@ def sync_issues_current_archive_chord_job(service_external_ids: list[int] = [], 
         callback = cast(Task, sync_issues_current_archive_chord_job_callback)
         job = chord([
             sync_current_issues_casted_task.s(delay, service_external_ids, current_borders),
-            sync_archive_casted_task.s(delay, service_external_ids, current_borders)
+            sync_archive_casted_task.s(delay, service_external_ids, archive_borders)
         ])
         result = job(callback.s())
     except Exception as e:
