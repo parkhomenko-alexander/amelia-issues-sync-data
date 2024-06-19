@@ -82,8 +82,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
         self.users_repo = UserRepository(self.async_session)
         self.work_categories_repo = WorkCategoryRepository(self.async_session)
         self.workflow_repo = WorkflowRepository(self.async_session)
-        self.tech_passport_repo = TechPassportRepository(self.async_session)
-
+        self.tech_passport_repo = TechPassportRepository(self.async_session)        
 
     async def __aexit__(self, *args):
         await self.rollback()

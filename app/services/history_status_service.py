@@ -45,7 +45,7 @@ class HistoryStatusService():
         return await self.uow.statuses_history_repo.get_existing_external_ids(ids)
 
     @staticmethod
-    async def get_external_issues_id_with_status_title(uow: AbstractUnitOfWork, service_id: int , filter_statuses: list[str] = []) -> dict[int, str]:
+    async def get_external_issues_id_with_status_title(uow: AbstractUnitOfWork, service_id: int | None = None, filter_statuses: list[str] = []) -> dict[int, str]:
         async with uow:
             iss_status = await uow.statuses_history_repo.get_last_statuses_for_each_issue(service_id, filter_statuses) 
             res={}

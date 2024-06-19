@@ -35,7 +35,8 @@ celery_app.conf.beat_schedule = {
     # },
     # "sync_workflows": {
     #     "task": "tasks.amelia_organizations_tasks.sync_workflows", 
-    #     "schedule": crontab(day_of_month="1", hour="0", minute="0"),
+    #     # "schedule": crontab(day_of_month="1", hour="0", minute="0"),
+    #     "schedule": crontab(minute="*/1"),
     # },
     # "sync_users": {
     #     "task": "tasks.amelia_organizations_tasks.sync_users", 
