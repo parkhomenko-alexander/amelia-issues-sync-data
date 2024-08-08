@@ -1,8 +1,13 @@
 from time import sleep
+
 from loguru import logger
 from requests import Response
-from app.celery.amelia_api_calls import APIGrids, APIRoutes, AmeliaApi
-from app.celery.helpers import ReturnTypeFromJsonQuery, async_to_sync, handle_response_of_json_query, handle_response_of_tech_passports
+
+from app.celery.amelia_api_calls import AmeliaApi, APIGrids, APIRoutes
+from app.celery.celery_app import celery_app
+from app.celery.helpers import (ReturnTypeFromJsonQuery, async_to_sync,
+                                handle_response_of_json_query,
+                                handle_response_of_tech_passports)
 from app.schemas.building_schemas import BuildingPostSchema
 from app.schemas.floor_schemas import FloorPostSchema
 from app.schemas.room_schemas import RoomPostSchema
@@ -14,7 +19,6 @@ from app.services.floor_service import FloorService
 from app.services.room_service import RoomService
 from app.services.tech_passport_service import TechPassportService
 from app.utils.unit_of_work import SqlAlchemyUnitOfWork
-from app.celery.celery_app import celery_app
 from config import config
 
 
@@ -143,7 +147,7 @@ async def sync_floors():
 
 @celery_app.task
 @async_to_sync
-async def sync_rooms(delay: float=config.API_CALLS_DELAY):
+async def sync_rooms(delay: float=config.API_CALLS_DELAY, building_id: int | None = None):
     """
         Get rooms
     """
@@ -153,7 +157,12 @@ async def sync_rooms(delay: float=config.API_CALLS_DELAY):
     amelia_api: AmeliaApi = AmeliaApi()
     amelia_api.auth()
 
-    params = amelia_api.create_json_for_request(APIGrids.ROOMS)
+    building_ext_id_id_mapped: dict[int, int] = await BuildingService.get_external_id_mapping(uow)
+    if building_id:
+        building_id_for_rooms: int | None = building_ext_id_id_mapped.get(building_id)
+    else:
+        building_id_for_rooms = None
+    params = amelia_api.create_json_for_request(APIGrids.ROOMS, building_id=building_id)
     response: Response | None = amelia_api.get(APIRoutes.ROOMS_WITH_QUERY, params=params)
     if response is None:
         msg = "Rooms response is none"
@@ -162,16 +171,19 @@ async def sync_rooms(delay: float=config.API_CALLS_DELAY):
     
     response_data: ReturnTypeFromJsonQuery[RoomPostSchema] = handle_response_of_json_query(response, RoomPostSchema)
     pages: int = amelia_api.get_count_of_pages(response_data)
-    building_ext_id_id_mapped: dict[int, int] = await BuildingService.get_external_id_mapping(uow)
     floors_ext_id_id_mapped: dict[int, int] = await FloorService.get_external_id_mapping(uow)
     facilities_name_id_mapped: dict[str, int] = await FacilityService.get_title_id_mapping(uow)
 
     logger.info("Rooms are synchronize")
     try:
         room_service = RoomService(uow)
-
+        if building_id_for_rooms:
+            rooms_ids: set[int] = set(await room_service.rooms_ids(uow, [building_id_for_rooms]))
+        else:
+            rooms_ids: set[int] = set(await room_service.rooms_ids(uow,))
+            
         for i in range(1, pages):
-            params = amelia_api.create_json_for_request(APIGrids.ROOMS, i)
+            params = amelia_api.create_json_for_request(APIGrids.ROOMS, i, building_id=building_id)
             response = amelia_api.get(APIRoutes.ROOMS_WITH_QUERY, params=params)
             sleep(delay)
             if response is None:
@@ -186,6 +198,7 @@ async def sync_rooms(delay: float=config.API_CALLS_DELAY):
                 s.building_id = building_ext_id_id_mapped[s.building_id]
                 s.floor_id = floors_ext_id_id_mapped[s.floor_id]
                 s.facility_id = facilities_name_id_mapped[s.facility_title]
+                rooms_ids.discard(s.external_id)
                 rooms.append(s)
 
             external_ids = [e.external_id for e in rooms]
@@ -195,8 +208,10 @@ async def sync_rooms(delay: float=config.API_CALLS_DELAY):
             if elements_to_insert != []:
                 await room_service.bulk_insert(elements_to_insert) 
             if element_to_update != []:
-                await room_service.bulk_update(element_to_update) 
+                await room_service.bulk_update(element_to_update)
 
+        if rooms_ids != []:
+            await room_service.bulk_delete(list(rooms_ids))
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
         return e

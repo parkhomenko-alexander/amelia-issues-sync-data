@@ -1,21 +1,22 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
+
 from sqlalchemy import DateTime, ForeignKey
-from sqlalchemy.orm import Mapped, relationship, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base_model import Base, str_350
 
 if TYPE_CHECKING:
-    from app.db.models.room import Room
     from app.db.models.building import Building
-    from app.db.models.status_history import StatusHistory
+    from app.db.models.company import Company
+    from app.db.models.facility import Facility
+    from app.db.models.priority import Priority
+    from app.db.models.room import Room
     from app.db.models.service import Service
+    from app.db.models.status_history import StatusHistory
+    from app.db.models.user import User
     from app.db.models.work_category import WorkCategory
     from app.db.models.workflow import Workflow
-    from app.db.models.priority import Priority
-    from app.db.models.company import Company
-    from app.db.models.user import User
-    from app.db.models.facility import Facility
 
 
 
@@ -39,7 +40,7 @@ class Issue(Base):
     # user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     declarer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id")) 
     executor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
-    room_id: Mapped[int | None] = mapped_column(ForeignKey("rooms.id"))
+    room_id: Mapped[int | None] = mapped_column(ForeignKey("rooms.id", ondelete="SET NULL"))
     # facility_id: Mapped[int] = mapped_column(ForeignKey("facilities.id"))
 
     work_category: Mapped["WorkCategory"] = relationship(back_populates="issues", uselist=False, foreign_keys=[work_category_id])

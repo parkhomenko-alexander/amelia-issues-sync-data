@@ -1,7 +1,13 @@
+import os
+from datetime import datetime, timedelta
 from typing import Sequence
+
 from loguru import logger
+from openpyxl import Workbook
+from sqlalchemy import Row
+
 from app.schemas.issue_schemas import IssuePostSchema
-from app.schemas.user_schemas import UserPostSchema 
+from app.schemas.user_schemas import UserPostSchema
 from app.services.services_helper import with_uow
 from app.utils.unit_of_work import AbstractUnitOfWork
 
@@ -61,6 +67,91 @@ class IssueService():
         logger.info(f"Issues {elements_id[0]}, ... was remove")
         return 0
 
+    @with_uow
+    async def generate_issues_report(self, start_date: datetime, end_date:datetime, hours_delta: int = 0 ):
+        """
+        Generate issues report
+        """
+        try:
+            result: Sequence[Row] = await self.uow.issues_repo.get_issues_with_filtered_by_time(start_date, end_date)
+            workbook = Workbook()
+            sheet = workbook.active
+
+            header_order = [
+                "id", "service_title", "work_category_title", "state", "description",
+                "created_at","finished_at","dead_line","executed_at", "rating", "building_full_title","room_title","Тип помещения","executor_full_name","company","parsed_room_title"
+            ]
+            
+            if sheet != None:
+                sheet.append(header_order)
+
+                for row in result:
+                # self.model.description,
+                # self.model.external_id, 
+                # self.model.created_at, 
+                # self.model.finish_date_plane, 
+                # self.model.dead_line,
+                # # finished_at
+                # self.model.rating,
+                # self.model.tel,
+                # self.model.email,
+                
+                # self.model.company_id, 
+                # self.model.service_id,
+                # self.model.work_category_id,
+                # self.model.building_id,
+                # self.model.executor_id, 
+                # self.model.room_id 
+                # select(filtered_issues_cte, Service.title, WorkCategory.title, Building.title, Room.title, User.first_name, User.middle_name, User.last_name, Company.full_name, last_statuses_with_msg.c.status, last_statuses_with_msg.c.created_at, prelast_statuses_cte.c.created_at, prelast_statuses_cte.c.created_at)
+                    room_title_row = row[17] 
+                    if " " in room_title_row:
+                        room_title, room_type = row[17].split(" ", 1)
+                    else:
+                        room_title = room_title_row
+                        room_type = ""
+                    
+                    pre_last_status = row[24]
+                    last_status = row[22]
+
+                    if last_status == "исполнена":
+                        executed = (row[25] + timedelta(10)).strftime('%d.%m.%Y %H:%M:%S') 
+                        finished = ""
+                    elif pre_last_status == "исполнена" and last_status == "закрыта":
+                        executed = (row[25] + timedelta(10)).strftime('%d.%m.%Y %H:%M:%S') 
+                        finished = (row[23] + timedelta(10)).strftime('%d.%m.%Y %H:%M:%S')
+                    else:
+                        executed = ""
+                        finished = ""
+
+                    conv = lambda i : i or ''
+
+                    prepared_row = [
+                        row[1], # id 
+                        row[14], # service_title
+                        row[15], # work_category_title
+                        row[22], # state 
+                        row[0], # description
+                        (row[2] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S'), # created_at
+                        finished, # finished_at
+                        (row[4] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S'), # dead_line
+                        executed, # executed_at
+                        row[5], #rating
+                        row[16], # building_full_title
+                        row[17], # room_title
+                        room_type, # Тип помещения
+                        conv(row[20]) + " " + conv(row[18]) + " " + conv(row[19]), # executor_full_name
+                        row[21],# company
+                        room_title# parsed_room_title
+                    ]
+                    sheet.append(prepared_row)
+
+            ROOT_DIR = os.getcwd()
+            file_path = ROOT_DIR + '/reports/issues_report.xlsx'       
+            workbook.save(file_path)
+        except Exception as e:
+            logger.error(e)
+
+
     @staticmethod
     async def get_all_external_ids_by_service(uow: AbstractUnitOfWork, service_ids: list[int] | None = None) -> Sequence[int]:
         async with uow:
@@ -83,3 +174,4 @@ class IssueService():
     async def get_all_external_ids(uow: AbstractUnitOfWork) -> Sequence[int]:
         async with uow:
             return await uow.issues_repo.get_all_external_ids()
+

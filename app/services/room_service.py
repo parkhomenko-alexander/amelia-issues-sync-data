@@ -1,8 +1,9 @@
 import os
 from typing import Any
-import pandas as pd
 
+import pandas as pd
 from loguru import logger
+
 from app.db.models.building import Building
 from app.db.models.company import Company
 from app.db.models.floor import Floor
@@ -48,6 +49,21 @@ class RoomService():
         
         logger.info(f"Rooms between {elements_update[0].external_id}-{elements_update[-1].external_id} were updated")
         return 0                 
+    
+    @with_uow
+    async def bulk_delete(self, elements_delete: list[int]) -> int:
+        """
+        Rooms deleting
+        """
+        try:
+            await self.uow.room_repo.bulk_delete(elements_delete)
+            await self.uow.commit()
+        except Exception as e:
+            logger.error(f"Some error occurred: {e}")
+            return 1
+        
+        logger.info(f"Rooms were deleted")
+        return 0           
 
     @with_uow
     async def get_existing_external_ids(self, ids: list[int]) -> set[int]:

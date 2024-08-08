@@ -1,11 +1,14 @@
 from datetime import datetime
 from typing import TypedDict
+
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 
-class GeneralSchema(BaseModel):
+class BaseUserModel(BaseModel):
     model_config = ConfigDict(from_attributes=True, alias_generator=to_camel, extra="ignore")
+
+class GeneralSchema(BaseUserModel):
 
     created_at: datetime | None = Field(None, validation_alias="created_at")
     updated_at: datetime | None = Field(None, validation_alias="updated_at")

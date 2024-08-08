@@ -1,14 +1,16 @@
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
+from enum import Enum
 from os import sep
 from time import sleep
 from typing import Any, TypedDict
-from loguru import logger
-from requests import Session, Response, post, get
-from enum import Enum
-from app.celery.helpers import ReturnTypeFromJsonQuery
 
+from loguru import logger
+from requests import Response, Session, get, post
+
+from app.celery.helpers import ReturnTypeFromJsonQuery
 from config import config
+
 
 class APIRoutes:
     LOGIN = "/auth/login"
@@ -104,7 +106,7 @@ class AmeliaApi():
         return response    
             
     
-    def create_json_for_request(self, grid: APIGrids, page: int=1, issue_id: int=0, service_id=None) -> dict[str, Any]:
+    def create_json_for_request(self, grid: APIGrids, page: int=1, issue_id: int=0, service_id=None, **kwargs) -> dict[str, Any]:
         data: dict[str, Any] = {}
         if grid == APIGrids.WORKFLOWS:
             data = {
@@ -190,6 +192,24 @@ class AmeliaApi():
                         },
                         "except_filters": {
                         },
+                        "grid": grid.value
+                    }
+                })
+            }
+        elif grid == APIGrids.ROOMS:
+            building_id: int | None = kwargs["building_id"]
+            building_id_filter = {"building_id": building_id} if building_id else {}
+            data = {
+                "json" : json.dumps({
+                    "table":{
+                        "sortBy":"id",
+                        "descending": True,
+                        "page": page,
+                        "rowsPerPage": 0,
+                        "rowsNumber": 0,
+                        "query": "",
+                        "filters": building_id_filter,
+                        "except_filters": {},
                         "grid": grid.value
                     }
                 })

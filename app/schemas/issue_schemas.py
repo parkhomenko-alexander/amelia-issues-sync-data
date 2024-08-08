@@ -1,8 +1,10 @@
-from datetime import datetime
 import re
+from datetime import datetime
 from typing import Literal
+
 from pydantic import Field, validator
-from app.schemas.general import GeneralSchema
+
+from app.schemas.general import BaseUserModel, GeneralSchema
 
 
 class IssuePostSchema(GeneralSchema):
@@ -37,3 +39,10 @@ class IssuePostSchema(GeneralSchema):
         CLEANRE = re.compile("<.*?>")
         cleantext = re.sub(CLEANRE, "", raw_html)
         return cleantext
+
+class IssueReportSchema(BaseUserModel):
+    ...
+    
+class IssueReportDataSchema(BaseUserModel):
+    start_date: datetime = Field(description="123.45") 
+    end_date: str = Field(description="123.45") 
