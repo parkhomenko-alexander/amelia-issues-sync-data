@@ -1,4 +1,5 @@
 import os
+import traceback
 from datetime import datetime, timedelta
 from typing import Sequence
 
@@ -68,7 +69,7 @@ class IssueService():
         return 0
 
     @with_uow
-    async def generate_issues_report(self, start_date: datetime, end_date:datetime, hours_delta: int = 0 ):
+    async def generate_issues_report(self, start_date: datetime, end_date:datetime, hours_delta: int = 0 ) -> str | None:
         """
         Generate issues report
         """
@@ -103,28 +104,32 @@ class IssueService():
                 # self.model.executor_id, 
                 # self.model.room_id 
                 # select(filtered_issues_cte, Service.title, WorkCategory.title, Building.title, Room.title, User.first_name, User.middle_name, User.last_name, Company.full_name, last_statuses_with_msg.c.status, last_statuses_with_msg.c.created_at, prelast_statuses_cte.c.created_at, prelast_statuses_cte.c.created_at)
-                    room_title_row = row[17] 
-                    if " " in room_title_row:
+                    room_title_row = row[17]
+                    if room_title_row is not None and " " in room_title_row:
                         room_title, room_type = row[17].split(" ", 1)
                     else:
-                        room_title = room_title_row
+                        room_title = room_title_row if room_title_row is not None else "Уточнить" 
                         room_type = ""
                     
                     pre_last_status = row[24]
                     last_status = row[22]
 
+                    if row[4] is None:
+                        dead_line = ""
+                    else:
+                        dead_line = (row[4] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S')
+
                     if last_status == "исполнена":
-                        executed = (row[25] + timedelta(10)).strftime('%d.%m.%Y %H:%M:%S') 
+                        executed = (row[25] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S') 
                         finished = ""
                     elif pre_last_status == "исполнена" and last_status == "закрыта":
-                        executed = (row[25] + timedelta(10)).strftime('%d.%m.%Y %H:%M:%S') 
-                        finished = (row[23] + timedelta(10)).strftime('%d.%m.%Y %H:%M:%S')
+                        executed = (row[25] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S') 
+                        finished = (row[23] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S')
                     else:
                         executed = ""
                         finished = ""
 
                     conv = lambda i : i or ''
-
                     prepared_row = [
                         row[1], # id 
                         row[14], # service_title
@@ -133,7 +138,7 @@ class IssueService():
                         row[0], # description
                         (row[2] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S'), # created_at
                         finished, # finished_at
-                        (row[4] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S'), # dead_line
+                        dead_line, # dead_line
                         executed, # executed_at
                         row[5], #rating
                         row[16], # building_full_title
@@ -148,8 +153,12 @@ class IssueService():
             ROOT_DIR = os.getcwd()
             file_path = ROOT_DIR + '/reports/issues_report.xlsx'       
             workbook.save(file_path)
+
+            return file_path
         except Exception as e:
             logger.error(e)
+            logger.error(traceback.format_exc())
+            return None
 
 
     @staticmethod

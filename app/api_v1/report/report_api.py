@@ -70,7 +70,12 @@ async def issues_report(
     try:
         issue_service = IssueService(uow)
         start_date, end_date  = dates
-        result = await issue_service.generate_issues_report(start_date, end_date)
+        file_report = await issue_service.generate_issues_report(start_date, end_date)
+        if file_report is None:
+            raise HTTPException(status_code=400, detail="Some error")
+
+        return FileResponse(path=file_report, filename=f"issues-{start_date}-{end_date}.xlsx", media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         
     except Exception as error:
         logger.error(error)
+        return error
