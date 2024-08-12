@@ -124,7 +124,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
                 StatusHistory.created_at,
                 func.row_number().over(
                     partition_by=StatusHistory.issue_id,
-                    order_by=StatusHistory.created_at.desc()
+                    order_by=StatusHistory.external_id.desc()
                 ).label('rank')
             )
             .cte("ranked_statuses_subquery")

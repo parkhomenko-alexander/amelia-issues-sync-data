@@ -1,9 +1,10 @@
-from ast import Tuple
 import asyncio
+import json
+from ast import Tuple
 from functools import wraps
 from typing import Any, Generic, Type, TypeVar
-from pydantic import BaseModel
 
+from pydantic import BaseModel
 from requests import Response
 
 from app.schemas.tech_passport_schemas import TechPassportPostSchema
@@ -60,13 +61,19 @@ def handle_response_of_tech_passports(response: Response, model: Type[TechPasspo
     response_json = response.json()
     fields = response_json["fields"]
     org_2lvl = fields[16]["value"]
+
+    object_view: str = json.loads(fields[7]["value"])["name"]
+    object_class: str = json.loads(fields[8]["value"])["name"]
+    object_type: str = json.loads(fields[9]["value"])["name"]
+    organization_3lvl: str = json.loads(fields[17]["value"])["name"]
+
     tech_passport = TechPassportPostSchema(
         external_id=room_id,
         title = fields[0]["value"],
-        object_view = fields[7]["value"],
-        object_class = fields[8]["value"],
-        object_type = fields[9]["value"],
-        organization_3lvl = fields[17]["value"],
+        object_view = object_view,
+        object_class = object_class,
+        object_type = object_type,
+        organization_3lvl = organization_3lvl,
         square = fields[21]["value"],
         number_study_places = fields[28]["value"],
 

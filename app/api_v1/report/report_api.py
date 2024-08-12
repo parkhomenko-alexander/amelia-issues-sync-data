@@ -34,8 +34,8 @@ def validate_dates(
     if end_time_dt < start_date_dt:
         raise HTTPException(status_code=400, detail="end_time cannot be earlier than start_date")
     
-    start_date_dt -= timedelta(hours=10)
-    end_time_dt -= timedelta(hours=10)
+    # start_date_dt -= timedelta(hours=10)
+    # end_time_dt -= timedelta(hours=10)
     
     return start_date_dt, end_time_dt 
 
