@@ -1,7 +1,14 @@
 from time import sleep
 from typing import Sequence, cast
+
 from celery import Task, chain, chord, group
 from requests import Response
+
+from app.celery.amelia_api_calls import AmeliaApi, APIGrids, APIRoutes, Borders
+from app.celery.celery_app import celery_app
+from app.celery.helpers import (ReturnTypeFromJsonQuery, ReturnTypePathParams,
+                                async_to_sync, handle_response_of_json_query,
+                                handle_response_of_path_params)
 from app.schemas.issue_schemas import IssuePostSchema
 from app.schemas.priority_schemas import PriorityPostSchema
 from app.schemas.service_schemas import ServicePostSchema
@@ -10,6 +17,7 @@ from app.schemas.work_category_schemas import WorkCategoryPostSchema
 from app.schemas.workflow_schemas import WorkflowPostSchema
 from app.services.building_service import BuildingService
 from app.services.company_service import CompanyService
+from app.services.fasility_service import FacilityService
 from app.services.history_status_service import HistoryStatusService
 from app.services.issue_service import IssueService
 from app.services.priority_service import PriorityService
@@ -18,13 +26,10 @@ from app.services.status_service import StatusService
 from app.services.user_service import UserService
 from app.services.work_category_service import WorkCategoryService
 from app.services.workflow_service import WorkflowService
-from logger import logger
-from app.celery.amelia_api_calls import APIGrids, APIRoutes, AmeliaApi, Borders
-from app.celery.celery_app import celery_app
-from app.celery.helpers import ReturnTypeFromJsonQuery, ReturnTypePathParams, async_to_sync, handle_response_of_json_query, handle_response_of_path_params
-from app.services.fasility_service import FacilityService
 from app.utils.unit_of_work import AbstractUnitOfWork, SqlAlchemyUnitOfWork
 from config import config
+from logger import logger
+
 
 @celery_app.task
 @async_to_sync
@@ -456,8 +461,13 @@ async def sync_current_issues(delay: float = config.API_CALLS_DELAY, service_ext
                             issue_id_for_status_sinchronize.append(iss.external_id)
                         case (_, _, True):
                             all_issues_with_statuses.pop(iss.external_id)
-                            all_issues_for_definding_archive_sync.pop(iss.external_id)
-                            issues_for_updating.append(iss)
+                            iss_external_id = all_issues_for_definding_archive_sync.get(iss.external_id, None)
+                            if iss_external_id is None:
+                                issues_for_inserting.append(iss)
+                                issue_id_for_status_sinchronize.append(iss.external_id)
+                            else:
+                                all_issues_for_definding_archive_sync.pop(iss.external_id)
+                                issues_for_updating.append(iss)
                         case (_, _, False):
                             issues_for_updating.append(iss)
                             issue_id_for_status_sinchronize.append(iss.external_id)
