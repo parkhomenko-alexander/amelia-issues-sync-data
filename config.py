@@ -1,9 +1,8 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from dotenv import find_dotenv, load_dotenv
-
 import os
 
-from sqlalchemy import false 
+from dotenv import find_dotenv, load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy import false
 
 DOTENV = os.path.join(os.path.dirname(__file__), ".env")
 
@@ -32,7 +31,8 @@ class Config(BaseSettings):
     API_BASE_URL: str = "" 
     API_USER: str = "" 
     API_USER_PASSWORD: str = ""
-    API_CALLS_DELAY: float = 3 
+    API_CALLS_DELAY: float = 3
+    API_CALLS_TIMEOUT_DELAY: float = 3
 
     model_config = SettingsConfigDict(env_file=DOTENV)
 

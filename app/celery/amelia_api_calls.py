@@ -7,6 +7,7 @@ from typing import Any, TypedDict
 
 from loguru import logger
 from requests import Response, Session, get, post
+from requests.exceptions import Timeout
 
 from app.celery.helpers import ReturnTypeFromJsonQuery
 from config import config
@@ -99,9 +100,14 @@ class AmeliaApi():
                     logger.error(f"Some error: status code is {st_code}, text: {response.text}")
                     return None
                 flag = False
-            except Exception as e:
+            except Timeout as e:
+                logger.exception("Some error: ", e)
+                sleep(config.API_CALLS_DELAY)
+            except Exception as e: 
+                    logger.exception("Time out error", e)
                     logger.exception("Some error: ", e)
-                    sleep(config.API_CALLS_DELAY)
+                    sleep(config.API_CALLS_TIMEOUT_DELAY)
+                    logger.exception("Next try")
                     continue
         return response    
             
