@@ -102,7 +102,6 @@ class AmeliaApi():
                 flag = False
             except Timeout as e:
                 logger.exception("Time out error", e)
-                logger.exception("Some error: ", e)
                 sleep(config.API_CALLS_DELAY)
                 logger.exception("Next try")
                 continue
