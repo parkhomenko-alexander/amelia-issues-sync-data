@@ -463,7 +463,7 @@ async def sync_current_issues(delay: float = config.API_CALLS_DELAY, service_ext
                             all_issues_with_statuses.pop(iss.external_id)
                             iss_external_id = all_issues_for_definding_archive_sync.get(iss.external_id, None)
                             if iss_external_id is None:
-                                issues_for_inserting.append(iss)
+                                issues_for_updating.append(iss)
                                 logger.info(f"Fuck case, issue_id {iss.external_id}, state: {state}, current_issues_state: {current_issues_status}")
                                 issue_id_for_status_sinchronize.append(iss.external_id)
                             else:
