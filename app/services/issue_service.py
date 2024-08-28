@@ -80,7 +80,7 @@ class IssueService():
 
             header_order = [
                 "id", "service_title", "work_category_title", "state", "description",
-                "created_at","finished_at","dead_line","executed_at", "rating", "building_full_title","room_title","Тип помещения","executor_full_name","company","parsed_room_title"
+                "created_at","finished_at","dead_line","executed_at", "rating", "building_full_title","room_title","Тип помещения","executor_full_name","company","parsed_room_title", "finish_date_plane"
             ]
             
             if sheet != None:
@@ -146,7 +146,8 @@ class IssueService():
                         room_type, # Тип помещения
                         conv(row[20]) + " " + conv(row[18]) + " " + conv(row[19]), # executor_full_name
                         row[21],# company
-                        room_title# parsed_room_title
+                        room_title, # parsed_room_title
+                        row[3] # finish_date_plane
                     ]
                     sheet.append(prepared_row)
 
