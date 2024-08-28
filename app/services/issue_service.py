@@ -128,6 +128,12 @@ class IssueService():
                     else:
                         executed = ""
                         finished = ""
+                    
+                    finished_at = row[3]
+                    if finished_at is None:
+                        finished_at = ""
+                    else:
+                        finished_at = (row[3] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S')
 
                     conv = lambda i : i or ''
                     prepared_row = [
@@ -147,7 +153,7 @@ class IssueService():
                         conv(row[20]) + " " + conv(row[18]) + " " + conv(row[19]), # executor_full_name
                         row[21],# company
                         room_title, # parsed_room_title
-                        (row[3] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S') # finish_date_plane
+                        finished_at# finish_date_plane
                     ]
                     sheet.append(prepared_row)
 
