@@ -1,17 +1,12 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+
 import uvicorn
-
-from config import config
-
-from app.db import (
-    Base, db, Building, Company, 
-    Facility, Floor, Issue, 
-    Priority, Room, Service, Status, 
-    StatusHistory, User, WorkCategory, Workflow, TechPassport
-)
+from fastapi import FastAPI
 
 from app.api_v1 import router as router_v1
+from app.db import Base, db
+from config import config
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,7 +22,6 @@ app = FastAPI(
 
 app.include_router(router=router_v1)
 # app.include_router(router=router_v1, prefix=config.api_v1_prefix)
-
 
 if __name__ == '__main__':
     uvicorn.run(

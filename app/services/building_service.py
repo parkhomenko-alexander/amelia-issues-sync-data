@@ -1,13 +1,16 @@
 from loguru import logger
+from redis import StrictRedis
+
 from app.schemas.building_schemas import BuildingPostSchema
 from app.services.services_helper import with_uow
+from app.utils.redis_manager import RedisManager
 from app.utils.unit_of_work import AbstractUnitOfWork
 
 
 class BuildingService():
     def __init__(self, uow: AbstractUnitOfWork):
         self.uow = uow
-    
+
     @with_uow
     async def bulk_insert(self, elements_post: list[BuildingPostSchema]) -> int:
         """
@@ -52,6 +55,24 @@ class BuildingService():
             for b in buildings:
                 buildings_title_id_mapped[b.title] = b.id
             return buildings_title_id_mapped
+
+    @staticmethod
+    async def get_title_external_id_mapping(uow: AbstractUnitOfWork) -> dict[str, int]:
+        async with uow:
+            buildings = await uow.buildings_repo.get_all()
+            buildings_title_external_id_mapped: dict[str, int] = {}
+            for b in buildings:
+                buildings_title_external_id_mapped[b.title] = b.external_id
+            return buildings_title_external_id_mapped
+
+    @staticmethod
+    async def get_external_id_title_mapping(uow: AbstractUnitOfWork) -> dict[int, str]:
+        async with uow:
+            buildings = await uow.buildings_repo.get_all()
+            buildings_title_id_mapped: dict[int, str] = {}
+            for b in buildings:
+                buildings_title_id_mapped[b.external_id] = b.title
+            return buildings_title_id_mapped
     
     @staticmethod
     async def get_external_id_mapping(uow: AbstractUnitOfWork) -> dict[int, int]:
@@ -80,3 +101,5 @@ class BuildingService():
                 building_rooms_mapping[b.title] = rooms_mapping
 
         return building_rooms_mapping 
+
+ 

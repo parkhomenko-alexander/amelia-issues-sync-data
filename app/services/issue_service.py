@@ -103,7 +103,7 @@ class IssueService():
                 # self.model.building_id,
                 # self.model.executor_id, 
                 # self.model.room_id 
-                # select(filtered_issues_cte, Service.title, WorkCategory.title, Building.title, Room.title, User.first_name, User.middle_name, User.last_name, Company.full_name, last_statuses_with_msg.c.status, last_statuses_with_msg.c.created_at, prelast_statuses_cte.c.created_at, prelast_statuses_cte.c.created_at)
+                # select(filtered_issues_cte, Service.title, WorkCategory.title, Building.title, Room.title, User.first_name, User.middle_name, User.last_name, Company.full_name, last_statuses_with_msg.c.status, last_statuses_with_msg.c.created_at, prelast_statuses_cte.c.status, prelast_statuses_cte.c.created_at)
                     room_title_row = row[17]
                     if room_title_row is not None and " " in room_title_row:
                         room_title, room_type = row[17].split(" ", 1)
@@ -119,8 +119,8 @@ class IssueService():
                     else:
                         dead_line = (row[4] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S')
 
-                    if last_status == "исполнена":
-                        executed = (row[25] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S') 
+                    if last_status in ["исполнена", "отказано"] :
+                        executed = (row[23] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S') 
                         finished = ""
                     elif pre_last_status == "исполнена" and last_status == "закрыта":
                         executed = (row[25] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S') 

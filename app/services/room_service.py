@@ -139,6 +139,21 @@ class RoomService():
             for r in rooms:
                 ids.append(r.external_id)        
         return ids
-    
 
+    @staticmethod
+    async def get_title_external_id_mapping(uow: AbstractUnitOfWork) -> dict[str, int]:
+        async with uow:
+            rooms = await uow.room_repo.get_all()
+            rooms_title_id_mapped: dict[str, int] = {}
+            for r in rooms:
+                rooms_title_id_mapped[r.title] = r.external_id
+            return rooms_title_id_mapped
 
+    @staticmethod
+    async def get_external_id_title_mapping(uow: AbstractUnitOfWork) -> dict[int, str]:
+        async with uow:
+            rooms = await uow.room_repo.get_all()
+            rooms_title_id_mapped: dict[int, str] = {}
+            for r in rooms:
+                rooms_title_id_mapped[r.external_id] = r.title.split(" ")[0]
+            return rooms_title_id_mapped
