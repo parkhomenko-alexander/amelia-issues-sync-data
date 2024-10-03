@@ -30,6 +30,7 @@ class Issue(Base):
     rating: Mapped[int | None]
     tel: Mapped[str_350 | None]
     email: Mapped[str_350 | None]
+    work_place: Mapped[str | None]
 
     work_category_id: Mapped[int] = mapped_column(ForeignKey("work_categories.id"))
     service_id: Mapped[int] = mapped_column(ForeignKey("services.external_id"))
