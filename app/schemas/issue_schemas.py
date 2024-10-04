@@ -15,8 +15,8 @@ class IssuePostSchema(GeneralSchema):
     rating: Literal[0, 1, 2, 3, 4, 5, None] = Field(None)
     tel: str | None = Field(None)
     email: str | None = Field(None)
-    work_place: str | None = Field(None)
-    
+    work_place: str | None = Field(None, validation_alias="work_place")
+
     state: str | None = Field(None, exclude=True)
     company_name: str | None = Field(None, validation_alias="company_name", exclude=True)
     work_category_title: str = Field(validation_alias="work_category_title", exclude=True)
