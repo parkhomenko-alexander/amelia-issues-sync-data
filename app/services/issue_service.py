@@ -80,39 +80,25 @@ class IssueService():
 
             header_order = [
                 "id", "service_title", "work_category_title", "state", "description",
-                "created_at","finished_at","dead_line","executed_at", "rating", "building_full_title","room_title","Тип помещения","executor_full_name","company","parsed_room_title", "finish_date_plane"
+                "created_at","finished_at","dead_line","executed_at", "rating", "building_full_title","room_title",
+                "Тип помещения","executor_full_name","company","parsed_room_title", "finish_date_plane",
+                "Приоритет", "Место проведения"
             ]
             
             if sheet != None:
                 sheet.append(header_order)
 
                 for row in result:
-                # self.model.description,
-                # self.model.external_id, 
-                # self.model.created_at, 
-                # self.model.finish_date_plane, 
-                # self.model.dead_line,
-                # # finished_at
-                # self.model.rating,
-                # self.model.tel,
-                # self.model.email,
-                
-                # self.model.company_id, 
-                # self.model.service_id,
-                # self.model.work_category_id,
-                # self.model.building_id,
-                # self.model.executor_id, 
-                # self.model.room_id 
-                # select(filtered_issues_cte, Service.title, WorkCategory.title, Building.title, Room.title, User.first_name, User.middle_name, User.last_name, Company.full_name, last_statuses_with_msg.c.status, last_statuses_with_msg.c.created_at, prelast_statuses_cte.c.status, prelast_statuses_cte.c.created_at)
-                    room_title_row = row[17]
+                    room_title_row = row[12]
                     if room_title_row is not None and " " in room_title_row:
-                        room_title, room_type = row[17].split(" ", 1)
+                        room_title, room_type = row[12].split(" ", 1)
                     else:
                         room_title = room_title_row if room_title_row is not None else "Уточнить" 
                         room_type = ""
-                    
-                    pre_last_status = row[24]
-                    last_status = row[22]
+                    work_place = row[8]
+
+                    pre_last_status = row[19]
+                    last_status = row[17]
 
                     if row[4] is None:
                         dead_line = ""
@@ -120,11 +106,11 @@ class IssueService():
                         dead_line = (row[4] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S')
 
                     if last_status in ["исполнена", "отказано"] :
-                        executed = (row[23] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S') 
+                        executed = (row[18] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S') 
                         finished = ""
                     elif pre_last_status == "исполнена" and last_status == "закрыта":
-                        executed = (row[25] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S') 
-                        finished = (row[23] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S')
+                        executed = (row[20] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S') 
+                        finished = (row[18] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S')
                     else:
                         executed = ""
                         finished = ""
@@ -136,24 +122,28 @@ class IssueService():
                         finished_at = (row[3] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S')
 
                     conv = lambda i : i or ''
+
+                    priority = row[21]
                     prepared_row = [
                         row[1], # id 
-                        row[14], # service_title
-                        row[15], # work_category_title
-                        row[22], # state 
+                        row[9], # service_title
+                        row[10], # work_category_title
+                        row[17], # state 
                         row[0], # description
                         (row[2] + timedelta(hours=10)).strftime('%d.%m.%Y %H:%M:%S'), # created_at
                         finished, # finished_at
                         dead_line, # dead_line
                         executed, # executed_at
                         row[5], #rating
-                        row[16], # building_full_title
-                        row[17], # room_title
+                        row[11], # building_full_title
+                        row[12], # room_title
                         room_type, # Тип помещения
-                        conv(row[20]) + " " + conv(row[18]) + " " + conv(row[19]), # executor_full_name
-                        row[21],# company
+                        conv(row[15]) + " " + conv(row[13]) + " " + conv(row[14]), # executor_full_name
+                        row[16],# company
                         room_title, # parsed_room_title
-                        finished_at# finish_date_plane
+                        finished_at,# finish_date_plane
+                        priority,
+                        work_place
                     ]
                     sheet.append(prepared_row)
 

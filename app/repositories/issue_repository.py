@@ -4,9 +4,9 @@ from typing import Sequence
 from sqlalchemy import CTE, Result, Row, Select, Subquery, and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.building import Building
-from app.db.models.company import Company
+from app.db import Building, Company
 from app.db.models.issue import Issue
+from app.db.models.priority import Priority
 from app.db.models.room import Room
 from app.db.models.service import Service
 from app.db.models.status_history import StatusHistory
@@ -70,7 +70,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
     
     async def get_issues_with_filtered_by_time(self, start_date: datetime, end_date: datetime) -> Sequence[Row]:
         
-        filtered_issues_cte: CTE =  (select(
+        filtered_issues_cte: CTE = (select(
                 self.model.description,
                 self.model.external_id, 
                 self.model.created_at, 
@@ -80,13 +80,15 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
                 self.model.rating,
                 self.model.tel,
                 self.model.email,
+                self.model.work_place,
                 
                 self.model.company_id, 
                 self.model.service_id,
                 self.model.work_category_id,
                 self.model.building_id,
                 self.model.executor_id, 
-                self.model.room_id 
+                self.model.room_id,
+                self.model.priority_id 
                 ).where(
                     and_(
                         self.model.created_at >= start_date,
@@ -141,7 +143,31 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         )
 
         stmt: Select = (
-            select(filtered_issues_cte, Service.title, WorkCategory.title, Building.title, Room.title, User.first_name, User.middle_name, User.last_name, Company.full_name, last_statuses_with_msg.c.status, last_statuses_with_msg.c.created_at, prelast_statuses_cte.c.status, prelast_statuses_cte.c.created_at)
+            # select(filtered_issues_cte, Service.title, WorkCategory.title, Building.title, Room.title, User.first_name, User.middle_name, User.last_name, Company.full_name, last_statuses_with_msg.c.status, last_statuses_with_msg.c.created_at, prelast_statuses_cte.c.status, prelast_statuses_cte.c.created_at, Priority.title)
+            select(
+                filtered_issues_cte.c.description,  # 0
+                filtered_issues_cte.c.external_id,  # 1
+                filtered_issues_cte.c.created_at,  # 2
+                filtered_issues_cte.c.finish_date_plane,  # 3
+                filtered_issues_cte.c.dead_line,  # 4
+                filtered_issues_cte.c.rating,  # 5
+                filtered_issues_cte.c.tel,  # 6
+                filtered_issues_cte.c.email,  # 7
+                filtered_issues_cte.c.work_place,  # 8
+                Service.title,  # 9
+                WorkCategory.title,  # 10
+                Building.title,  # 11
+                Room.title,  # 12
+                User.first_name,  # 13
+                User.middle_name,  # 14
+                User.last_name,  # 15
+                Company.full_name,  # 16
+                last_statuses_with_msg.c.status,  # 17
+                last_statuses_with_msg.c.created_at,  # 18
+                prelast_statuses_cte.c.status,  # 19
+                prelast_statuses_cte.c.created_at,  # 20
+                Priority.title  # 21
+            )
             .join(Service, Service.external_id == filtered_issues_cte.c.service_id)
             .join(WorkCategory, WorkCategory.id ==  filtered_issues_cte.c.work_category_id)
             .outerjoin(Building, Building.id == filtered_issues_cte.c.building_id)
@@ -151,6 +177,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
             .outerjoin(Company, User.company_id == Company.id)
             .join(last_statuses_with_msg, last_statuses_with_msg.c.issue_id == filtered_issues_cte.c.external_id)
             .join(prelast_statuses_cte, prelast_statuses_cte.c.issue_id == filtered_issues_cte.c.external_id)
+            .outerjoin(Priority, Priority.id  == filtered_issues_cte.c.priority_id)
         )
         query_res: Result = await self.async_session.execute(stmt)
         res: Sequence[Row] = query_res.all()
