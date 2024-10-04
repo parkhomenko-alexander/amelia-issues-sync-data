@@ -148,7 +148,7 @@ class IssueService():
                     sheet.append(prepared_row)
 
             ROOT_DIR = os.getcwd()
-            file_path = ROOT_DIR + '/reports/issues_report.xlsx'       
+            file_path = ROOT_DIR + '/reports/issues_report.xlsx'
             workbook.save(file_path)
 
             return file_path
@@ -157,6 +157,12 @@ class IssueService():
             logger.error(traceback.format_exc())
             return None
 
+    @staticmethod
+    async def get_report_path() -> str:
+        ROOT_DIR = os.getcwd()
+        file_path = ROOT_DIR + '/reports/issues_report.xlsx'
+        
+        return file_path
 
     @staticmethod
     async def get_all_external_ids_by_service(uow: AbstractUnitOfWork, service_ids: list[int] | None = None) -> Sequence[int]:

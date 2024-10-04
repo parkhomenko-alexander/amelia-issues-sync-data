@@ -60,7 +60,7 @@ async def generate_general_report(
 
 
 @router.get(
-    '/general_issues_report', 
+    '/generate_general_issues_report', 
 )
 async def issues_report(
     uow: UowDep,
@@ -74,8 +74,27 @@ async def issues_report(
         if file_report is None:
             raise HTTPException(status_code=400, detail="Some error")
 
-        return FileResponse(path=file_report, filename=f"issues-{start_date}-{end_date}.xlsx", media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        return "Start generating issues report"
+        # return FileResponse(path=file_report, filename=f"issues-{start_date}-{end_date}.xlsx", media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         
     except Exception as error:
         logger.error(error)
         return error
+
+
+@router.get(
+    '/save_general_issues_report', 
+)
+async def save_issues_report(
+    uow: UowDep,
+):  
+    try:
+        issue_service = IssueService(uow)
+        file_path = await issue_service.get_report_path()
+        return FileResponse(path=file_path, filename=f"issues-report.xlsx", media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        
+    except Exception as error:
+        logger.error(error)
+        return error
+    
+
