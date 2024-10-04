@@ -65,7 +65,7 @@ class AmeliaApi():
             self,
             base_url: str = config.API_BASE_URL,
             pagination_per_page:  int = 20,
-            timeout: int = 10
+            timeout: int = 100
         ):
 
         self.session: Session = Session()
@@ -102,12 +102,12 @@ class AmeliaApi():
                 flag = False
             except Timeout as e:
                 logger.exception("Time out error", e)
-                sleep(config.API_CALLS_TIMEOUT_DELAY)
+                sleep(config.API_CALLS_TIMEOUT_DELAY * 30)
                 logger.exception("Next try")
                 continue
             except ConnectionError as e:
                 logger.error("Connecttion error. ", e)
-                sleep(config.API_CALLS_TIMEOUT_DELAY)
+                sleep(config.API_CALLS_TIMEOUT_DELAY * 30)
                 logger.error("Next try")
                 continue
             except Exception as e: 
