@@ -62,10 +62,10 @@ def handle_response_of_tech_passports(response: Response, model: Type[TechPasspo
     fields = response_json["fields"]
     org_2lvl = fields[16]["value"]
 
-    object_view: str | None = json.loads(fields[7]["value"])["name"] if fields[7]["value"] else None
-    object_class: str | None = json.loads(fields[8]["value"])["name"] if fields[8]["value"] else None
-    object_type: str | None = json.loads(fields[9]["value"])["name"] if fields[9]["value"] else None
-    organization_3lvl: str | None = json.loads(fields[17]["value"])["name"] if fields[17]["value"] else None
+    object_view: str | None = json.loads(fields[7]["value"].replace('"', '\\"'))["name"] if fields[7]["value"] else None
+    object_class: str | None = json.loads(fields[8]["value"].replace('"', '\\"'))["name"] if fields[8]["value"] else None
+    object_type: str | None = json.loads(fields[9]["value"].replace('"', '\\"'))["name"] if fields[9]["value"] else None
+    organization_3lvl: str | None = json.loads(fields[17]["value"].replace('"', '\\"'))["name"] if fields[17]["value"] else None
 
     tech_passport = TechPassportPostSchema(
         external_id=room_id,
