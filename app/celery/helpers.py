@@ -62,10 +62,10 @@ def handle_response_of_tech_passports(response: Response, model: Type[TechPasspo
     fields = response_json["fields"]
     org_2lvl = fields[16]["value"]
 
-    object_view: str = json.loads(fields[7]["value"])["name"]
-    object_class: str = json.loads(fields[8]["value"])["name"]
-    object_type: str = json.loads(fields[9]["value"])["name"]
-    organization_3lvl: str = json.loads(fields[17]["value"])["name"]
+    object_view: str | None = json.loads(fields[7]["value"])["name"] if fields[7]["value"] else None
+    object_class: str | None = json.loads(fields[8]["value"])["name"] if fields[8]["value"] else None
+    object_type: str | None = json.loads(fields[9]["value"])["name"] if fields[9]["value"] else None
+    organization_3lvl: str | None = json.loads(fields[17]["value"])["name"] if fields[17]["value"] else None
 
     tech_passport = TechPassportPostSchema(
         external_id=room_id,
@@ -75,9 +75,9 @@ def handle_response_of_tech_passports(response: Response, model: Type[TechPasspo
         object_type = object_type,
         organization_3lvl = organization_3lvl,
         square = fields[21]["value"],
-        number_study_places = fields[28]["value"],
+        number_study_places = fields[28]["value"] if fields[28]["value"] else None,
 
-        company_id = fields[1]["value"],
+        company_id = fields[1]["value"] if fields[1]["value"] else None,
         organization_2lvl = org_2lvl if org_2lvl != 0 else 29,
         floor_id = fields[2]["value"],
     )

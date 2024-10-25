@@ -1,9 +1,10 @@
-from loguru import logger
-from redis import StrictRedis
+from json import dumps
 
-from app.schemas.building_schemas import BuildingPostSchema
+from loguru import logger
+
+from app.schemas.building_schemas import (BuildingForCache, BuildingPostSchema,
+                                          BuildingsForCache)
 from app.services.services_helper import with_uow
-from app.utils.redis_manager import RedisManager
 from app.utils.unit_of_work import AbstractUnitOfWork
 
 
@@ -102,4 +103,26 @@ class BuildingService():
 
         return building_rooms_mapping 
 
- 
+    @staticmethod
+    async def prepare_building_sturcture_for_cache(uow: AbstractUnitOfWork) -> BuildingsForCache:
+        async with uow:
+            buildings = await uow.buildings_repo.get_all_joined_rooms()
+            building_rooms_mapping = {}
+
+            for b in buildings:
+                rooms_mapping = {}
+
+                if b.rooms != None:
+                    for r in b.rooms:
+                        rooms_mapping[r.title] = r.id
+
+                building_rooms_mapping[b.title] = BuildingForCache(
+                    rooms=rooms_mapping,
+                    id=b.external_id
+                )
+
+        return building_rooms_mapping
+
+    @staticmethod
+    async def serialize_buildings_for_cache(data: BuildingsForCache) -> str:
+        return dumps({k: v.model_dump() for k, v in data.items()}, indent=4)

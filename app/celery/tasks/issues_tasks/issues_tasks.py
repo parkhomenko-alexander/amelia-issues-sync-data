@@ -676,7 +676,40 @@ async def sync_archive_by_pattern(delay: float = config.API_CALLS_DELAY, service
     logger.info(return_msg)
     return return_msg
 
+# @celery_app.task
+# @async_to_sync
+# async def sync_issues_dynamic_model(delay: float = config.API_CALLS_DELAY):
+#     uow = SqlAlchemyUnitOfWork()
 
+#     amelia_api: AmeliaApi = AmeliaApi()
+#     amelia_api.auth()
+
+    
+#     company_title_id_mapped: dict[str, int] = await CompanyService.get_title_id_mapping(uow)
+#     service_work_categories_mapped: dict[int, dict[str, int]] = await ServiceService.get_mapping_service_id_work_categories(uow)
+#     building_title_id_mapped: dict[str, int] = await BuildingService.get_title_id_mapping(uow)
+#     priority_title_id_mapped: dict[str, int] = await PriorityService.get_title_id_mapping(uow)
+#     exucutor_fullname_id_mapped: dict[str, int] = await UserService.get_fullname_id_mapping_by_roles(
+#         uow, 
+#         ["admin", "director", "chief_engineer", "dispatcher", "executor", "dispatcher/executor"]
+#     )
+#     building_rooms_mapping: dict[str, dict[str, int]] = await BuildingService.get_building_rooms_mapping(uow)
+#     workflow_extenal_id_id_mapping: dict[int, int] = await WorkflowService.get_external_id_id_mapping(uow)
+#     users_ids: set[int] = await UserService.get_users_ids(uow)
+
+
+#     included_statuses = ["отказано", "исполнена", "закрыта", "входящая", "новая", "принята", "взята в работу", "изменить исполнителя", "приостановлена", "возобновлена", "на корректировку"]
+#     in_porgress_statuses = ["входящая", "новая", "принята", "взята в работу", "изменить исполнителя", "приостановлена", "возобновлена", "на корректировку"]
+#     if service_external_ids == []:
+#         service_ids = [*service_work_categories_mapped]
+#         service_ids.remove(20)
+#         service_ids.remove(21)
+#     else:
+#         service_ids = service_external_ids
+#     logger.info("Current issues are synchronize")
+
+#     all_external_ids_issues_set: set[int] = set(await IssueService.get_all_external_ids(uow))
+#     all_issues_for_definding_archive_sync: dict[int, str] =  await HistoryStatusService.get_external_issues_id_with_status_title(uow, filter_statuses=in_porgress_statuses)
 
 async def insert_history_statuses(statuses: list[HistoryStatusRecord], uow: AbstractUnitOfWork):
     history_status_service = HistoryStatusService(uow)

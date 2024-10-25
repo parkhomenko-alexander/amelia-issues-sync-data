@@ -1,4 +1,7 @@
-from pydantic import Field
+from ast import Dict
+
+from pydantic import BaseModel, Field
+
 from app.schemas.general import GeneralSchema
 
 
@@ -9,3 +12,12 @@ class BuildingPostSchema(GeneralSchema):
     address: str | None = Field(None)
     latitude: float | None = Field(None)
     longitude: float | None = Field(None)
+
+
+RoomForCahce = dict[str, int]
+
+class BuildingForCache(BaseModel):
+    id: int
+    rooms: RoomForCahce
+
+BuildingsForCache = dict[str, BuildingForCache]

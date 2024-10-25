@@ -1,4 +1,7 @@
-from pydantic import Field
+from typing import Dict
+
+from pydantic import BaseModel, Field
+
 from app.schemas.general import GeneralSchema
 
 
