@@ -234,7 +234,7 @@ async def sync_tech_passports(delay: float = config.API_CALLS_DELAY, building_id
         rooms_ids = await RoomService.rooms_ids(uow, building_ids=building_ids)
     else:
         rooms_ids = await RoomService.rooms_ids(uow)
-
+    rooms_ids = [44447]
     ids_len = len(rooms_ids)
 
     logger.info("Tech passports are synchronize")

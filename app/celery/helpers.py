@@ -61,7 +61,7 @@ def handle_response_of_tech_passports(response: Response, model: Type[TechPasspo
     response_json = response.json()
     fields = response_json["fields"]
     org_2lvl = fields[16]["value"]
-
+    print(fields[17]["value"])
     object_view: str | None = json.loads(fields[7]["value"])["name"] if fields[7]["value"] else None
     object_class: str | None = json.loads(fields[8]["value"])["name"] if fields[8]["value"] else None
     object_type: str | None = json.loads(fields[9]["value"])["name"] if fields[9]["value"] else None
