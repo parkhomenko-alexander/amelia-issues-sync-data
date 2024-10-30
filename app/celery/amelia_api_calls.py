@@ -25,6 +25,7 @@ class APIRoutes:
     FLOORS_WITH_QUERY = "/floors?"
     ROOMS_WITH_QUERY = "/rooms?"
     USERS_WITH_QUERY = "/users?"
+    USERS = "/users"
     ARCHIVE_ISSUES_WITH_QUERY = "/issues/archive?"
     ISSUES_STATUSES_WITH_QUERY = "/issue_histories?"
     CURRENT_ISSUES_WITH_QUERY = "/issues"
@@ -116,8 +117,43 @@ class AmeliaApi():
                     logger.exception("Next try")
                     continue
         return response    
-            
-    
+
+    def patch(self, route: str, params: dict[str, Any] = {}) -> Response | None:
+        flag = True
+        response = None
+        while flag:
+            try:
+                response = self.session.patch(self.base_url + route, json=params, timeout=self.timeout)
+                st_code = response.status_code 
+                
+                if st_code == 401:
+                    logger.error(f"Some error: status code is {st_code}, text: {response.text}")
+                    logger.error(response.json(), response.headers, sep="\n\n")
+                    sleep(20)
+                    self.auth()
+                    logger.info("Next try")
+                    continue
+                elif st_code == 404:
+                    logger.error(f"Some error: status code is {st_code}, text: {response.text}")
+                    return None
+                flag = False
+            except Timeout as e:
+                logger.exception("Time out error", e)
+                sleep(config.API_CALLS_TIMEOUT_DELAY * 30)
+                logger.exception("Next try")
+                continue
+            except ConnectionError as e:
+                logger.error("Connecttion error. ", e)
+                sleep(config.API_CALLS_TIMEOUT_DELAY * 30)
+                logger.error("Next try")
+                continue
+            except Exception as e: 
+                    logger.exception("Some error: ", e)
+                    sleep(config.API_CALLS_TIMEOUT_DELAY)
+                    logger.exception("Next try")
+                    continue
+        return response    
+
     def create_json_for_request(self, grid: APIGrids, page: int=1, issue_id: int=0, service_id=None, **kwargs) -> dict[str, Any]:
         data: dict[str, Any] = {}
         if grid == APIGrids.WORKFLOWS:
@@ -190,7 +226,13 @@ class AmeliaApi():
                     }
                 })
             }
-        elif grid == APIGrids.USERS: 
+        elif grid == APIGrids.USERS:
+            filters = {}
+            role = kwargs["role"]
+            if role:
+                filters = {
+                    "role": role 
+                }
             data = {
                 "json" : json.dumps({
                     "table":{
@@ -200,8 +242,7 @@ class AmeliaApi():
                         "rowsPerPage": 0,
                         "rowsNumber": 0,
                         "query": "",
-                        "filters": {
-                        },
+                        "filters": filters,
                         "except_filters": {
                         },
                         "grid": grid.value
@@ -245,7 +286,6 @@ class AmeliaApi():
 
         return data
 
-    
     def auth(self) -> int:
         flag = True
         while flag:
@@ -275,7 +315,7 @@ class AmeliaApi():
 
     def get_pagination(self) -> Pagination:
         return self.pagination
-    
+
     def get_count_of_pages(self, data: ReturnTypeFromJsonQuery):
         count_objects: int = data.count
 

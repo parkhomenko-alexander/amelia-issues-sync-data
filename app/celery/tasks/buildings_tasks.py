@@ -221,7 +221,7 @@ async def sync_rooms(delay: float=config.API_CALLS_DELAY, building_id: int | Non
 
 @celery_app.task
 @async_to_sync
-async def sync_tech_passports(delay: float = config.API_CALLS_DELAY, building_ids: list[int] | None = None):
+async def sync_tech_passports(delay: float = config.API_CALLS_DELAY, facility_id: int = 1, building_ids: list[int] | None = None):
     """
         Get tech passports
     """
@@ -233,9 +233,9 @@ async def sync_tech_passports(delay: float = config.API_CALLS_DELAY, building_id
     if building_ids:
         rooms_ids = await RoomService.rooms_ids(uow, building_ids=building_ids)
     else:
-        rooms_ids = await RoomService.rooms_ids(uow)
+        rooms_ids = await RoomService.rooms_ids(uow, facility_id=facility_id)
     ids_len = len(rooms_ids)
-
+    
     logger.info("Tech passports are synchronize")
     try:
         tech_passport_service = TechPassportService(uow)

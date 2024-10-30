@@ -1,15 +1,15 @@
 from typing import Sequence
+
 from sqlalchemy import Result, Row, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
+from app.db.models.building import Building
 from app.db.models.company import Company
 from app.db.models.floor import Floor
 from app.db.models.room import Room
-from app.db.models.building import Building
 from app.db.models.tech_passport import TechPassport
 from app.repositories.abstract_repository import SQLAlchemyRepository
-
-from sqlalchemy.orm import aliased
 
 
 class RoomRepository(SQLAlchemyRepository[Room]):
@@ -54,3 +54,9 @@ class RoomRepository(SQLAlchemyRepository[Room]):
         all_rows = res.all() 
 
         return all_rows
+    
+    async def get_all_by_facility(self, facility_id):
+        stmt = select(self.model).where(self.model.facility_id==facility_id)
+        res = await self.async_session.scalars(stmt)
+
+        return res.all()

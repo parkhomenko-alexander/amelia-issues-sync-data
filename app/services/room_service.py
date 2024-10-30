@@ -128,16 +128,16 @@ class RoomService():
             return file_path
 
     @staticmethod
-    async def rooms_ids(uow: AbstractUnitOfWork, building_ids: list[int] | None = None) -> list[int]:
+    async def rooms_ids(uow: AbstractUnitOfWork, building_ids: list[int] | None = None, facility_id: int = 0) -> list[int]:
         async with uow:
             ids: list[int] = []
             if building_ids:
                 filters = [uow.room_repo.model.building_id == b_id for b_id in building_ids]
                 rooms = await uow.room_repo.get_all_fitered_or(filters)
             else:
-                rooms = await uow.room_repo.get_all()
+                rooms = await uow.room_repo.get_all_by_facility(facility_id)
             for r in rooms:
-                ids.append(r.external_id)        
+                ids.append(r.external_id)
         return ids
 
     @staticmethod

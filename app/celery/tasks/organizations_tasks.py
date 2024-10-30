@@ -1,19 +1,24 @@
+from time import sleep
+
+from requests import Response
+
+from app.celery.amelia_api_calls import AmeliaApi, APIGrids, APIRoutes
+from app.celery.celery_app import celery_app
+from app.celery.helpers import (ReturnTypeFromJsonQuery, async_to_sync,
+                                handle_response_of_json_query)
 from app.schemas.company_schemas import CompanyPostSchema
+from app.schemas.facility_schemas import FacilityPostSchema
 from app.schemas.priority_schemas import PriorityPostSchema
 from app.schemas.user_schemas import UserPostSchema
 from app.schemas.workflow_schemas import WorkflowPostSchema
 from app.services.company_service import CompanyService
+from app.services.fasility_service import FacilityService
 from app.services.priority_service import PriorityService
 from app.services.user_service import UserService
 from app.services.workflow_service import WorkflowService
-from logger import logger
-from requests import Response
-from app.celery.amelia_api_calls import APIGrids, APIRoutes, AmeliaApi
-from app.celery.celery_app import celery_app
-from app.celery.helpers import ReturnTypeFromJsonQuery, async_to_sync, handle_response_of_json_query
-from app.schemas.facility_schemas import FacilityPostSchema
-from app.services.fasility_service import FacilityService
 from app.utils.unit_of_work import SqlAlchemyUnitOfWork
+from config import config
+from logger import logger
 
 
 @celery_app.task
@@ -236,7 +241,7 @@ async def sync_users():
         for i in range(1, pages):
             params = amelia_api.create_json_for_request(APIGrids.USERS, i)
             response = amelia_api.get(APIRoutes.USERS_WITH_QUERY, params=params)
-
+            
             if response is None:
                 msg = "Users response is none"
                 logger.error(msg)
@@ -273,3 +278,59 @@ async def sync_users():
     
     logger.info("Users were synchronized")
     return
+
+
+@celery_app.task
+@async_to_sync
+async def patch_common_users(pages: int = 1, delay: float = config.API_CALLS_DELAY):
+    amelia_api: AmeliaApi = AmeliaApi()
+    amelia_api.auth()
+
+    params = amelia_api.create_json_for_request(APIGrids.USERS, role="user")
+
+    response: Response | None = amelia_api.get(APIRoutes.USERS_WITH_QUERY, params=params)
+    if response is None:
+        msg = "Users response is none"
+        logger.error(msg)
+        return msg
+    
+    logger.info("Common users patch")
+    users_count = 0
+    try:
+
+        for i in range(1, pages):
+            params = amelia_api.create_json_for_request(APIGrids.USERS, i, role="user")
+
+            response = amelia_api.get(APIRoutes.USERS_WITH_QUERY, params=params)
+
+            if response is None:
+                msg = "Common users patch response is none"
+                logger.error(msg)
+                return msg
+
+            users = response.json()["data"]
+            for user in users:
+                user_id = user["id"]
+
+                data = {
+                    "user": {
+                        "service_id": 19,
+                        "company_id": 2
+                    }
+                }
+                url = f"/{user_id}"
+
+                response = amelia_api.patch(APIRoutes.USERS + url, params=data)
+                users_count += 1
+                sleep(delay)
+                if users_count % 100 == 0:
+                    logger.info(f"{users_count} users patched")
+                    
+
+    except Exception as e:
+        logger.exception(f"Some error occurred: {e}")
+        return e
+    
+    logger.info("Common users patch finished")
+    return
+ 

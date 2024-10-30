@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Generic, Optional, Sequence, Type, TypeVar
+
 from pydantic import BaseModel
 from sqlalchemy import delete, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.functions import count 
-from app.db.base_model import Base
+from sqlalchemy.sql.functions import count
 
+from app.db.base_model import Base
 
 T = TypeVar('T', bound=Base)
 
