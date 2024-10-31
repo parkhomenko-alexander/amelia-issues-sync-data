@@ -221,7 +221,7 @@ async def sync_rooms(delay: float=config.API_CALLS_DELAY, building_id: int | Non
 
 @celery_app.task
 @async_to_sync
-async def sync_tech_passports(delay: float = config.API_CALLS_DELAY, facility_id: int = 1, building_ids: list[int] | None = None):
+async def sync_tech_passports(delay: float = config.API_CALLS_DELAY, facility_id: int = 1, building_ids: list[int] | None = None, offset: int = 0):
     """
         Get tech passports
     """
@@ -235,12 +235,12 @@ async def sync_tech_passports(delay: float = config.API_CALLS_DELAY, facility_id
     else:
         rooms_ids = await RoomService.rooms_ids(uow, facility_id=facility_id)
     ids_len = len(rooms_ids)
-    
+    start = offset
     logger.info("Tech passports are synchronize")
     try:
         tech_passport_service = TechPassportService(uow)
         tech_passports: list[TechPassportPostSchema] = []
-        for i in range(0, ids_len):
+        for i in range(start, ids_len):
             room_id = rooms_ids[i]
             response = amelia_api.get(APIRoutes.TECH_PASSPORT_WITH_ID + str(room_id))
             sleep(delay)
