@@ -114,7 +114,8 @@ class BuildingService():
 
                 if b.rooms != None:
                     for r in b.rooms:
-                        rooms_mapping[r.title] = r.id
+                        short_title = r.title.split(" ")[0]
+                        rooms_mapping[short_title] = r.external_id
 
                 building_rooms_mapping[b.title] = BuildingForCache(
                     rooms=rooms_mapping,
@@ -125,4 +126,4 @@ class BuildingService():
 
     @staticmethod
     async def serialize_buildings_for_cache(data: BuildingsForCache) -> str:
-        return dumps({k: v.model_dump() for k, v in data.items()}, indent=4)
+        return dumps({k: v.model_dump() for k, v in data.items()}, indent=1)

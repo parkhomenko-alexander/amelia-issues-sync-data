@@ -7,6 +7,7 @@ from loguru import logger
 from openpyxl import Workbook
 from sqlalchemy import Row
 
+from app.celery.helpers import ShortIssue
 from app.schemas.issue_schemas import IssuePostSchema
 from app.schemas.user_schemas import UserPostSchema
 from app.services.services_helper import with_uow
@@ -186,4 +187,16 @@ class IssueService():
     async def get_all_external_ids(uow: AbstractUnitOfWork) -> Sequence[int]:
         async with uow:
             return await uow.issues_repo.get_all_external_ids()
+
+    @staticmethod
+    async def get_last_statuses_by_id(uow: AbstractUnitOfWork, issues: list[ShortIssue]) -> dict[int, str]:
+        async with uow:
+            ids: list[int] = [iss.id for iss in issues]
+            res = await uow.issues_repo.get_last_statuses_by_id(ids)
+            
+            res_dict = {}
+            for iss_row in res:
+                res_dict[iss_row[0]] = iss_row[1]
+                 
+            return res_dict
 

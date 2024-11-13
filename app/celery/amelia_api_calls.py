@@ -1,13 +1,13 @@
 import json
-from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 from enum import Enum
-from os import sep
 from time import sleep
 from typing import Any, TypedDict
+from urllib.parse import urlencode
 
 from loguru import logger
-from requests import Response, Session, get, post
-from requests.exceptions import ConnectionError, ReadTimeout, Timeout
+from requests import Response, Session, post
+from requests.exceptions import ConnectionError, Timeout
 
 from app.celery.helpers import ReturnTypeFromJsonQuery
 from config import config
@@ -30,6 +30,9 @@ class APIRoutes:
     ISSUES_STATUSES_WITH_QUERY = "/issue_histories?"
     CURRENT_ISSUES_WITH_QUERY = "/issues"
     TECH_PASSPORT_WITH_ID = "/rooms/form_data?id="
+    
+    DYNAMIC_ISSUES = "/dynamic/issues?"
+    ISSUE = "/issues"
 
 
     @classmethod
@@ -50,6 +53,7 @@ class APIGrids(Enum):
     ARCHIVE_ISSUES = "archive"
     ISSUES_STATUSES = "history"
     CURRENT_ISSUES = "issues"
+    DYNAMIC_ISSUES = "dynamic_issues"
 
 
 
@@ -155,6 +159,9 @@ class AmeliaApi():
         return response    
 
     def create_json_for_request(self, grid: APIGrids, page: int=1, issue_id: int=0, service_id=None, **kwargs) -> dict[str, Any]:
+        """
+        Generate query string parameters
+        """
         data: dict[str, Any] = {}
         if grid == APIGrids.WORKFLOWS:
             data = {
@@ -286,6 +293,25 @@ class AmeliaApi():
 
         return data
 
+    def generate_query_params_issues(self, page: int, **kwargs) -> str:
+        
+        params = {
+            "page": page,
+            "sort_by": "id",
+            "descending": True,
+            "facility_id": 2,
+            "filters[transition_status_id][]": [
+                "16,130,179", "33,125,177", "134", "6",
+                "10,20,124,176", "96,132,180", "9,19,131,185",
+                "21,128,184", "1,11,127,183", "5,22,126,182",
+                "4", "2,12,133,175", "8,18,129,178", "7"
+            ],
+            "filters[transition_date[from]]": kwargs["start_date"],
+            "filters[transition_date[to]]": kwargs["end_date"]
+        }
+
+        return urlencode(params)
+    
     def auth(self) -> int:
         flag = True
         while flag:
@@ -323,3 +349,18 @@ class AmeliaApi():
             return 1
         pages: int = count_objects // self.get_pagination()["per_page"] + 2
         return pages
+    
+    def check_time_range(self, time_range: list[str]) -> list[str]:
+        try:
+            if time_range == []:
+                start_date = (date.today()).strftime("%Y-%m-%dT%H:%M:%S")
+                end_date = (date.today() + timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%S")
+                return [start_date, end_date]
+            
+            start_date =   datetime.strptime(time_range[0], "%Y-%m-%dT%H:%M:%S%z")
+            end_date = datetime.strptime(time_range[1], "%Y-%m-%dT%H:%M:%S%z")
+
+            return [time_range[0], time_range[1]]
+        except ValueError:
+            logger.error("Error validation time range")
+            return []

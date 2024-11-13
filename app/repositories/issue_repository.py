@@ -183,3 +183,33 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         res: Sequence[Row] = query_res.all()
 
         return res 
+
+    async def get_last_statuses_by_id(self, issues_ids: list[int]) -> Sequence[Row[tuple[int, str]]]:
+        max_statuses_ids_cte: CTE = (
+            select(
+                StatusHistory.issue_id,
+                func.max(StatusHistory.external_id).label("latest_status_id")
+            ).
+            where(StatusHistory.issue_id.in_(issues_ids)).
+            group_by(StatusHistory.issue_id).
+            cte("latest_status_cte")
+        )
+
+        last_statuses_with_msg: CTE = (
+            select(
+                StatusHistory.issue_id,
+                StatusHistory.status
+            )
+            .join(
+                max_statuses_ids_cte, StatusHistory.external_id == max_statuses_ids_cte.c.latest_status_id
+            )
+            .cte("latest_statuses_with_message")
+        )
+
+        stmt = (
+            select(last_statuses_with_msg.c.issue_id, last_statuses_with_msg.c.status)
+        )
+
+        query_res = await self.async_session.execute(stmt)
+        res = query_res.all()
+        return res

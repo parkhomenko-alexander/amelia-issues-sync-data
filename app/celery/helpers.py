@@ -39,6 +39,23 @@ class ReturnTypeFromJsonQuery(BaseModel, Generic[T]):
 class ReturnTypePathParams(BaseModel, Generic[T]):
     data: list[T]
 
+class DynamicIssuesCount(BaseModel):
+    total: int
+    filtered: int
+
+class ShortIssue(BaseModel, Generic[T]):
+    id: int
+    state: str
+
+class DynamicIssuesResponse(BaseModel, Generic[T]):
+    data: list[T]
+    count: DynamicIssuesCount
+
+    def page_count(self, per_page) -> int:
+        if self.count.total == 0:
+            return 0
+        return self.count.filtered // per_page + 1
+
 
 def handle_response_of_json_query(response: Response, model: Type[T]) -> ReturnTypeFromJsonQuery[T]:
     """
@@ -83,4 +100,3 @@ def handle_response_of_tech_passports(response: Response, model: Type[TechPasspo
     )
 
     return tech_passport
-

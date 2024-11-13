@@ -1,20 +1,18 @@
 from time import sleep
-from typing import Sequence, cast
+from typing import Sequence
 
-from celery import Task, chain, chord, group
 from requests import Response
 
 from app.celery.amelia_api_calls import AmeliaApi, APIGrids, APIRoutes, Borders
 from app.celery.celery_app import celery_app
-from app.celery.helpers import (ReturnTypeFromJsonQuery, ReturnTypePathParams,
+from app.celery.helpers import (DynamicIssuesResponse, ReturnTypeFromJsonQuery,
+                                ReturnTypePathParams, ShortIssue,
                                 async_to_sync, handle_response_of_json_query,
                                 handle_response_of_path_params)
 from app.schemas.issue_schemas import IssuePostSchema
-from app.schemas.priority_schemas import PriorityPostSchema
 from app.schemas.service_schemas import ServicePostSchema
 from app.schemas.status_schemas import HistoryStatusRecord, StatusPostSchema
 from app.schemas.work_category_schemas import WorkCategoryPostSchema
-from app.schemas.workflow_schemas import WorkflowPostSchema
 from app.services.building_service import BuildingService
 from app.services.company_service import CompanyService
 from app.services.fasility_service import FacilityService
@@ -676,41 +674,6 @@ async def sync_archive_by_pattern(delay: float = config.API_CALLS_DELAY, service
     logger.info(return_msg)
     return return_msg
 
-# @celery_app.task
-# @async_to_sync
-# async def sync_issues_dynamic_model(delay: float = config.API_CALLS_DELAY):
-#     uow = SqlAlchemyUnitOfWork()
-
-#     amelia_api: AmeliaApi = AmeliaApi()
-#     amelia_api.auth()
-
-    
-#     company_title_id_mapped: dict[str, int] = await CompanyService.get_title_id_mapping(uow)
-#     service_work_categories_mapped: dict[int, dict[str, int]] = await ServiceService.get_mapping_service_id_work_categories(uow)
-#     building_title_id_mapped: dict[str, int] = await BuildingService.get_title_id_mapping(uow)
-#     priority_title_id_mapped: dict[str, int] = await PriorityService.get_title_id_mapping(uow)
-#     exucutor_fullname_id_mapped: dict[str, int] = await UserService.get_fullname_id_mapping_by_roles(
-#         uow, 
-#         ["admin", "director", "chief_engineer", "dispatcher", "executor", "dispatcher/executor"]
-#     )
-#     building_rooms_mapping: dict[str, dict[str, int]] = await BuildingService.get_building_rooms_mapping(uow)
-#     workflow_extenal_id_id_mapping: dict[int, int] = await WorkflowService.get_external_id_id_mapping(uow)
-#     users_ids: set[int] = await UserService.get_users_ids(uow)
-
-
-#     included_statuses = ["отказано", "исполнена", "закрыта", "входящая", "новая", "принята", "взята в работу", "изменить исполнителя", "приостановлена", "возобновлена", "на корректировку"]
-#     in_porgress_statuses = ["входящая", "новая", "принята", "взята в работу", "изменить исполнителя", "приостановлена", "возобновлена", "на корректировку"]
-#     if service_external_ids == []:
-#         service_ids = [*service_work_categories_mapped]
-#         service_ids.remove(20)
-#         service_ids.remove(21)
-#     else:
-#         service_ids = service_external_ids
-#     logger.info("Current issues are synchronize")
-
-#     all_external_ids_issues_set: set[int] = set(await IssueService.get_all_external_ids(uow))
-#     all_issues_for_definding_archive_sync: dict[int, str] =  await HistoryStatusService.get_external_issues_id_with_status_title(uow, filter_statuses=in_porgress_statuses)
-
 async def insert_history_statuses(statuses: list[HistoryStatusRecord], uow: AbstractUnitOfWork):
     history_status_service = HistoryStatusService(uow)
 
@@ -781,7 +744,139 @@ async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | No
     logger.info("Issues history statuses were synchronized")
     return
 
+async def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
 
+    uow = SqlAlchemyUnitOfWork()
 
+    amelia_api: AmeliaApi = AmeliaApi()
+    amelia_api.auth()
+
+    issues_service = IssueService(uow)
+
+    if issues_id != []:
+        ...
+        return
+
+    tr = amelia_api.check_time_range(time_range)
+    if tr ==[]:
+        logger.info("Stop sync process, wrong time range")
+
+    url: str = amelia_api.generate_query_params_issues(page=1, start_date=tr[0], end_date=tr[1])
+    dynamic_iss_response = amelia_api.get(APIRoutes.DYNAMIC_ISSUES + url)
+    if dynamic_iss_response is None:
+        logger.error("Dynamic issues response is none.")
+        return
+    response: DynamicIssuesResponse = DynamicIssuesResponse(**dynamic_iss_response.json())
+    page_count = response.page_count(amelia_api.pagination["per_page"])
+
+    issues: list[ShortIssue] = []
+
+    for i in range(1, 3):
+        url = amelia_api.generate_query_params_issues(page=i, start_date=tr[0], end_date=tr[1])
+        dynamic_iss_response = amelia_api.get(APIRoutes.DYNAMIC_ISSUES + url)
+
+        if dynamic_iss_response is None:
+            logger.error("Dynamic issues response is none.")
+            return
+        
+        response = DynamicIssuesResponse[ShortIssue](**dynamic_iss_response.json())
+        issues.extend(response.data)
+
+    existed_issues_with_statuses = await issues_service.get_last_statuses_by_id(uow, issues)
+
+    issues_id_for_inserting = []
+    issues_id_for_status_sinchronize = []
+    issues_id_for_updating = []
+    for iss in issues:
+        last_status = existed_issues_with_statuses[iss.id]
+        amelia_status = iss.state
+        match (last_status, last_status == amelia_status):
+            case (None, _):
+                issues_id_for_inserting.append(iss.id)
+                issues_id_for_status_sinchronize.append(iss.id)
+            case (_, False):
+                issues_id_for_updating.append(iss.id)
+                issues_id_for_status_sinchronize.append(iss.id)
+            case (_, True):
+                continue
+            
+    company_title_id_mapped: dict[str, int] = await CompanyService.get_title_id_mapping(uow)
+    service_work_categories_mapped: dict[int, dict[str, int]] = await ServiceService.get_mapping_service_id_work_categories(uow)
+    building_title_id_mapped: dict[str, int] = await BuildingService.get_title_id_mapping(uow)
+    priority_title_id_mapped: dict[str, int] = await PriorityService.get_title_id_mapping(uow)
+    exucutor_fullname_id_mapped: dict[str, int] = await UserService.get_fullname_id_mapping_by_roles(
+        uow, 
+        ["admin", "director", "chief_engineer", "dispatcher", "executor", "dispatcher/executor"]
+    )
+    building_rooms_mapping: dict[str, dict[str, int]] = await BuildingService.get_building_rooms_mapping(uow)
+    workflow_extenal_id_id_mapping: dict[int, int] = await WorkflowService.get_external_id_id_mapping(uow)
+    users_ids: set[int] = await UserService.get_users_ids(uow)
     
+    issues_for_inserting: list [IssuePostSchema] = []
+    issues_for_updating: list [IssuePostSchema] = []
+
+    for iss_id in issues_id_for_inserting:
+
+        iss_response = amelia_api.get(APIRoutes.ISSUE + str(iss_id))
+        if iss_response is None:
+            logger.info(f"{iss_id} is None")
+            continue
+
+        iss = IssuePostSchema(**iss_response.json()["data"])
+
+        building_title = iss.building_title.split("/")[0][:-1]
+        if iss.room_title is None:
+            room_id = None
+        else:
+            room_id = building_rooms_mapping[building_title].get(iss.room_title)
+        
+        if iss.declarer_id not in users_ids: 
+            iss.declarer_id = None
+    
+        iss.company_id = None if iss.company_name is None else company_title_id_mapped[iss.company_name]
+        iss.work_category_id = service_work_categories_mapped[iss.service_id][iss.work_category_title]
+        
+        iss.building_id = building_title_id_mapped[building_title]
+
+        iss.priority_id = None if iss.priority_title is None else priority_title_id_mapped.get(iss.priority_title, None)
+        iss.executor_id = None if iss.executor_full_name is None else exucutor_fullname_id_mapped.get(iss.executor_full_name, None)
+
+        iss.workflow_id = workflow_extenal_id_id_mapping[iss.workflow_id]
+        iss.room_id = room_id
+
+        issues_for_inserting.append(iss)
+
+    for iss_id in issues_id_for_updating:
+
+        iss_response = amelia_api.get(APIRoutes.ISSUE + "/" + str(iss_id))
+        if iss_response is None:
+            logger.info(f"{iss_id} is None")
+            continue
+
+        iss = IssuePostSchema(**iss_response.json()["common"]["data"])
+
+        building_title = iss.building_title.split("/")[0][:-1]
+        if iss.room_title is None:
+            room_id = None
+        else:
+            room_id = building_rooms_mapping[building_title].get(iss.room_title)
+        
+        if iss.declarer_id not in users_ids: 
+            iss.declarer_id = None
+    
+        iss.company_id = None if iss.company_name is None else company_title_id_mapped[iss.company_name]
+        iss.work_category_id = service_work_categories_mapped[iss.service_id][iss.work_category_title]
+        
+        iss.building_id = building_title_id_mapped[building_title]
+
+        iss.priority_id = None if iss.priority_title is None else priority_title_id_mapped.get(iss.priority_title, None)
+        iss.executor_id = None if iss.executor_full_name is None else exucutor_fullname_id_mapped.get(iss.executor_full_name, None)
+
+        iss.workflow_id = workflow_extenal_id_id_mapping[iss.workflow_id]
+        iss.room_id = room_id
+
+        issues_for_updating.append(iss)
+        
+
+    logger.info(dynamic_iss_response)
 
