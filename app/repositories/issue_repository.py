@@ -1,7 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Sequence
 
-from sqlalchemy import CTE, Result, Row, Select, Subquery, and_, func, select
+from sqlalchemy import (CTE, BinaryExpression, Result, Row, Select, and_,
+                        between, desc, func, select)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import Building, Company
@@ -18,7 +19,8 @@ from app.repositories.abstract_repository import SQLAlchemyRepository
 class IssueRepository(SQLAlchemyRepository[Issue]):
     def __init__(self, async_session: AsyncSession):
         super().__init__(async_session, Issue)
-
+    
+    
     async def get_all_external_ids_with_included_statuses(self, service_id: int, statuses: list[str]) -> Sequence[int]:
         last_statuses_ids: CTE = (
             select(
@@ -183,7 +185,353 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         res: Sequence[Row] = query_res.all()
 
         return res 
+    
+    def prepare_conditions(
+        self,
+        buildings_id: list[int]=[],
+        services_id: list[int]=[],
+        works_category_id: list[int]=[],
+        rooms_id: list[int]=[],
+        priorities_id: list[int]=[],
+        urgencies: list[str]=[],
 
+    ) -> list[BinaryExpression]:
+        conditions: list[BinaryExpression] = []
+
+        if buildings_id:
+            conditions.append(self.model.building_id.in_(buildings_id))
+        if services_id:
+            conditions.append(self.model.service_id.in_(services_id))
+        if works_category_id:
+            conditions.append(self.model.work_category_id.in_(works_category_id))
+        if rooms_id:
+            conditions.append(self.model.room_id.in_(rooms_id))
+        if priorities_id:
+            conditions.append(self.model.priority_id.in_(priorities_id))
+        if urgencies:
+            conditions.append(self.model.urgency.in_(urgencies))
+
+        return conditions
+
+    
+    async def get_issues_with_filters_for_report_ver2(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        transition_start_date: datetime,
+        transition_end_date: datetime,
+        transition_statuses: list[str]=[],
+        buildings_id: list[int]=[],
+        services_id: list[int]=[],
+        works_category_id: list[int]=[],
+        rooms_id: list[int]=[],
+        priorities_id: list[int]=[],
+        urgencies: list[str]=[],
+        limit: int = 50, 
+        page: int = 0
+    ) -> Sequence[Row]:
+        
+        conditions: list[BinaryExpression] = self.prepare_conditions(buildings_id, services_id, works_category_id, rooms_id, priorities_id,
+            urgencies
+        )
+
+        # ! перешедшие в статусы по дате
+        transition_in_statuses_by_period: CTE = (
+            select(
+                StatusHistory.issue_id.distinct().label("issue_id")
+            )
+            .where(
+                and_(
+                    StatusHistory.created_at.between(transition_start_date, transition_end_date),
+                    StatusHistory.status.in_(transition_statuses)
+                )
+            )
+            .cte()
+        )
+
+        
+        # query_res: Result = await self.async_session.execute(select(transition_in_statuses_by_period))
+        # res2: Sequence[Row] = query_res.all()
+
+        # ! отфильтрованные по фильтрам
+        filter_trinsition_issues_cte: CTE = (
+            select(
+                transition_in_statuses_by_period.c.issue_id
+            )
+            .join(
+                self.model, transition_in_statuses_by_period.c.issue_id == self.model.external_id
+            )
+            .where(
+                and_(
+                    *conditions,
+                )
+            )
+            .cte()
+        )
+
+        # query_res: Result = await self.async_session.execute(select(filter_trinsition_issues_cte))
+        # res3: Sequence[Row] = query_res.all()
+
+        #! отфильтрованные по дате создания
+        issues_created_cte: CTE = (
+            select(
+                StatusHistory.issue_id,
+                func.min(StatusHistory.external_id).label("min_external_status_id"),
+                func.timezone("UTC-10", func.min(StatusHistory.created_at)).label("min_created_at")
+            )
+            .group_by(StatusHistory.issue_id)
+            
+            .cte()
+        )
+
+        # query_res: Result = await self.async_session.execute(select(issues_created_cte))
+        # res4: Sequence[Row] = query_res.all()
+
+        issues_created_filtered_by_time_range_cte: CTE = (
+            select(
+                issues_created_cte.c.issue_id,
+                issues_created_cte.c.min_external_status_id,
+                issues_created_cte.c.min_created_at
+            )
+            .where(
+                between(
+                    issues_created_cte.c.min_created_at,
+                    start_date,
+                    end_date
+                )
+            )
+            .order_by(issues_created_cte.c.issue_id)
+            .cte()
+        )
+        # query_res: Result = await self.async_session.execute(select(issues_created_filtered_by_time_range_cte))
+        # res5: Sequence[Row] = query_res.all()
+
+        # ! итоговые id с которыми будет работа
+        join_transition_with_cretion_at_time_cte: CTE = (
+            select(
+                filter_trinsition_issues_cte.c.issue_id,
+            )
+            .join(issues_created_filtered_by_time_range_cte, filter_trinsition_issues_cte.c.issue_id == issues_created_filtered_by_time_range_cte.c.issue_id)
+            .limit(limit)
+            .offset(limit*page)
+            .cte()
+        )
+
+        # query_res: Result = await self.async_session.execute(select(join_transition_with_cretion_at_time_cte))
+        # res6:  Sequence[Row] = query_res.all()
+
+        ranked_statuses_for_joined_issues_cte: CTE =(
+            select(
+                join_transition_with_cretion_at_time_cte.c.issue_id,
+                StatusHistory.status,
+                StatusHistory.created_at,
+                func.row_number().over(
+                    partition_by=StatusHistory.issue_id, order_by=desc(StatusHistory.external_id)
+                ).label("rank")
+            )
+            .join(StatusHistory, join_transition_with_cretion_at_time_cte.c.issue_id == StatusHistory.issue_id)
+            .cte()
+        )
+        # query_res: Result = await self.async_session.execute(select(ranked_statuses_for_joined_issues_cte))
+        # res7:  Sequence[Row] = query_res.all()
+
+        last_status_cte: CTE = (
+            select(
+                ranked_statuses_for_joined_issues_cte.c.issue_id,
+                ranked_statuses_for_joined_issues_cte.c.status,
+                func.timezone("UTC-10", ranked_statuses_for_joined_issues_cte.c.created_at).label("last_status_created"),
+            )
+            .where(ranked_statuses_for_joined_issues_cte.c.rank == 1)
+            .cte()
+        )
+        # query_res: Result = await self.async_session.execute(select(last_status_cte))
+        # res8:  Sequence[Row] = query_res.all()
+
+        pred_last_status_cte: CTE = (
+            select(
+                ranked_statuses_for_joined_issues_cte.c.issue_id,
+                ranked_statuses_for_joined_issues_cte.c.status,
+                func.timezone("UTC-10", ranked_statuses_for_joined_issues_cte.c.created_at).label("pred_status_created"),
+            )
+            .where(ranked_statuses_for_joined_issues_cte.c.rank == 2)
+            .cte()
+        )
+        # query_res: Result = await self.async_session.execute(select(pred_last_status_cte))
+        # res9:  Sequence[Row] = query_res.all()
+
+        first_status_by_rank_cte: CTE = (
+            select(
+                ranked_statuses_for_joined_issues_cte.c.issue_id,
+                func.max(ranked_statuses_for_joined_issues_cte.c.rank).label("first_stat_rank")
+            )
+            .group_by(ranked_statuses_for_joined_issues_cte.c.issue_id)
+            .cte()
+        )
+        # query_res: Result = await self.async_session.execute(select(first_status_by_rank_cte))
+        # res10:  Sequence[Row] = query_res.all()
+        
+        first_status_cte: CTE = (
+            select(
+                first_status_by_rank_cte.c.issue_id,
+                ranked_statuses_for_joined_issues_cte.c.status,
+                func.timezone("UTC-10", ranked_statuses_for_joined_issues_cte.c.created_at).label("first_status_created"),
+            )
+            .join(first_status_by_rank_cte, and_(
+                    first_status_by_rank_cte.c.issue_id == ranked_statuses_for_joined_issues_cte.c.issue_id,
+                    first_status_by_rank_cte.c.first_stat_rank == ranked_statuses_for_joined_issues_cte.c.rank,
+                )
+            )
+            .cte()
+        )
+        # query_res: Result = await self.async_session.execute(select(first_status_cte))
+        # res11:  Sequence[Row] = query_res.all()
+
+        joined_issues: Select = (
+            select(
+                join_transition_with_cretion_at_time_cte.c.issue_id,
+                self.model.description.label("iss_descr"),
+                self.model.rating,
+                self.model.urgency,
+                self.model.work_place,
+                func.timezone("UTC-10", self.model.finish_date_plane).label("finish_date_plane"),
+                Service.title.label("service_title"),
+                WorkCategory.title.label("wc_title"),
+                last_status_cte.c.status.label("last_status"),
+
+                first_status_cte.c.first_status_created.label("created_at_first_stat"),
+                last_status_cte.c.last_status_created.label("created_at_last_stat"),
+                pred_last_status_cte.c.status.label("predlast_status"),
+                pred_last_status_cte.c.pred_status_created.label("created_at_predlast_stat"),
+
+
+                Building.title.label("building_title"),
+                Room.title.label("room_title"),
+                Priority.title.label("prior_title"),
+                
+            )
+            .join(self.model, join_transition_with_cretion_at_time_cte.c.issue_id == self.model.external_id)
+            .join(Service, self.model.service_id == Service.external_id)
+            .join(WorkCategory, self.model.work_category_id == WorkCategory.id)
+            .join(last_status_cte, self.model.external_id == last_status_cte.c.issue_id)
+            .join(first_status_cte, self.model.external_id == first_status_cte.c.issue_id)
+            .join(pred_last_status_cte, self.model.external_id == pred_last_status_cte.c.issue_id)
+            .join(Building, self.model.building_id == Building.id)
+            .outerjoin(Room, self.model.room_id == Room.id)
+            .join(Priority,self.model.priority_id == Priority.id)
+        )
+        query_res: Result = await self.async_session.execute(joined_issues)
+        res:  Sequence[Row] = query_res.all()
+
+        return res 
+
+
+    async def get_count_issues_with_filters_for_report_ver2(
+    self,
+    start_date: datetime,
+    end_date: datetime,
+    transition_start_date: datetime,
+    transition_end_date: datetime,
+    transition_statuses: list[str]=[],
+    buildings_id: list[int]=[],
+    services_id: list[int]=[],
+    works_category_id: list[int]=[],
+    rooms_id: list[int]=[],
+    priorities_id: list[int]=[],
+    urgencies: list[str]=[],
+    limit: int = 50, 
+    page: int = 0
+) -> int | None:
+    
+        conditions: list[BinaryExpression] = self.prepare_conditions(buildings_id, services_id, works_category_id, rooms_id, priorities_id,
+            urgencies
+        )
+
+        # ! перешедшие в статусы по дате
+        transition_in_statuses_by_period: CTE = (
+            select(
+                StatusHistory.issue_id.distinct().label("issue_id")
+            )
+            .where(
+                and_(
+                    StatusHistory.created_at.between(transition_start_date, transition_end_date),
+                    StatusHistory.status.in_(transition_statuses)
+                )
+            )
+            .cte()
+        )
+
+        
+        query_res: Result = await self.async_session.execute(select(transition_in_statuses_by_period))
+        res2: Sequence[Row] = query_res.all()
+
+        # ! отфильтрованные по фильтрам
+        filter_trinsition_issues_cte: CTE = (
+            select(
+                transition_in_statuses_by_period.c.issue_id
+            )
+            .join(
+                self.model, transition_in_statuses_by_period.c.issue_id == self.model.external_id
+            )
+            .where(
+                and_(
+                    *conditions,
+                )
+            )
+            .cte()
+        )
+
+        query_res: Result = await self.async_session.execute(select(filter_trinsition_issues_cte))
+        res3: Sequence[Row] = query_res.all()
+
+        #! отфильтрованные по дате создания
+        issues_created_cte: CTE = (
+            select(
+                StatusHistory.issue_id,
+                func.min(StatusHistory.external_id).label("min_external_status_id"),
+                func.timezone("UTC-10", func.min(StatusHistory.created_at)).label("min_created_at")
+            )
+            .group_by(StatusHistory.issue_id)
+            
+            .cte()
+        )
+
+        query_res: Result = await self.async_session.execute(select(issues_created_cte))
+        res4: Sequence[Row] = query_res.all()
+
+        issues_created_filtered_by_time_range_cte: CTE = (
+            select(
+                issues_created_cte.c.issue_id,
+                issues_created_cte.c.min_external_status_id,
+                issues_created_cte.c.min_created_at
+            )
+            .where(
+                between(
+                    issues_created_cte.c.min_created_at,
+                    start_date,
+                    end_date
+                )
+            )
+            .order_by(issues_created_cte.c.issue_id)
+            .cte()
+        )
+        query_res: Result = await self.async_session.execute(select(issues_created_filtered_by_time_range_cte))
+        res5: Sequence[Row] = query_res.all()
+
+        # ! итоговые id с которыми будет работа
+        join_transition_with_cretion_at_time_cte: CTE = (
+            select(
+                func.count(filter_trinsition_issues_cte.c.issue_id),
+            )
+            .join(issues_created_filtered_by_time_range_cte, filter_trinsition_issues_cte.c.issue_id == issues_created_filtered_by_time_range_cte.c.issue_id)
+            .cte()
+        )
+
+        query_res: Result = await self.async_session.execute(select(join_transition_with_cretion_at_time_cte))
+        res6 = query_res.scalar()
+        
+        return res6
+
+    
     async def get_last_statuses_by_id(self, issues_ids: list[int]) -> Sequence[Row[tuple[int, str]]]:
         max_statuses_ids_cte: CTE = (
             select(
@@ -213,3 +561,4 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         query_res = await self.async_session.execute(stmt)
         res = query_res.all()
         return res
+    

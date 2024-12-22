@@ -1,11 +1,12 @@
 from typing import Sequence
+
 from sqlalchemy import CTE, Result, Row, Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.issue import Issue
+from app.db.models.status_history import StatusHistory
 from app.repositories.abstract_repository import SQLAlchemyRepository
 
-from app.db.models.status_history import StatusHistory
-from app.db.models.issue import Issue
 
 class StatusHistoryRepository(SQLAlchemyRepository[StatusHistory]):
     def __init__(self, async_session: AsyncSession):
@@ -58,3 +59,14 @@ class StatusHistoryRepository(SQLAlchemyRepository[StatusHistory]):
         res: Result = await self.async_session.execute(latest_statuses_stmt)
 
         return res.all()
+    
+    async def get_unique_statuses(self,) -> list[str]:
+        stmt: Select = (
+            select(
+                self.model.status.distinct()
+            )
+        )
+
+        query_res = await self.async_session.execute(stmt)
+        res =  query_res.scalars().all()
+        return [r for r in res]

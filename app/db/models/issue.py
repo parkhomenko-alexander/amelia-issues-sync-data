@@ -9,7 +9,6 @@ from app.db.base_model import Base, str_350
 if TYPE_CHECKING:
     from app.db.models.building import Building
     from app.db.models.company import Company
-    from app.db.models.facility import Facility
     from app.db.models.priority import Priority
     from app.db.models.room import Room
     from app.db.models.service import Service
@@ -31,6 +30,7 @@ class Issue(Base):
     tel: Mapped[str_350 | None]
     email: Mapped[str_350 | None]
     work_place: Mapped[str | None]
+    urgency: Mapped[str | None]
 
     work_category_id: Mapped[int] = mapped_column(ForeignKey("work_categories.id"))
     service_id: Mapped[int] = mapped_column(ForeignKey("services.external_id"))
@@ -38,7 +38,6 @@ class Issue(Base):
     workflow_id: Mapped[int] = mapped_column(ForeignKey("workflows.id")) 
     priority_id: Mapped[int | None] = mapped_column(ForeignKey("priorities.id"))
     company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"))
-    # user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     declarer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id")) 
     executor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     room_id: Mapped[int | None] = mapped_column(ForeignKey("rooms.id", ondelete="SET NULL"))
@@ -49,7 +48,6 @@ class Issue(Base):
     workflow: Mapped["Workflow"] = relationship(back_populates="issues", uselist=False, foreign_keys=[workflow_id])
     priority: Mapped["Priority"] = relationship(back_populates="issues", uselist=False, foreign_keys=[priority_id])
     company: Mapped["Company"] = relationship(back_populates="issues", uselist=False, foreign_keys=[company_id])
-    # creator: Mapped["User"] = relationship(back_populates="issues_creator", uselist=False, foreign_keys=[user_id])
     declarer: Mapped["User"] = relationship(back_populates="issues_declarer", uselist=False, foreign_keys=[declarer_id])
     executor: Mapped["User"] = relationship(back_populates="issues_executor", uselist=False, foreign_keys=[executor_id])
     statuses_history: Mapped["StatusHistory"] = relationship(
@@ -60,5 +58,4 @@ class Issue(Base):
     )
     building: Mapped["Building"] = relationship(back_populates="issues", uselist=False, foreign_keys=[building_id])
     room: Mapped["Room"] = relationship(back_populates="issues", uselist=False, foreign_keys=[room_id])
-    # facility: Mapped["Facility"] = relationship(back_populates="issues", uselist=False, foreign_keys=[facility_id])
 

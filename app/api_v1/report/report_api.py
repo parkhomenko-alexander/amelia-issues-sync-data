@@ -1,43 +1,20 @@
-import re
-from datetime import date, datetime, timedelta
-from typing import Annotated
+from datetime import datetime
+from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from app.api_v1.dependencies import UowDep
-from app.schemas.issue_schemas import IssueReportDataSchema
+from app.api_v1.report.dependencies import validate_dates
+from app.schemas.issue_schemas import IssuesFiltersSchema
 from app.services.issue_service import IssueService
+from app.services.report_service import ReportService
 from app.services.room_service import RoomService
 from logger import logger
 
 router = APIRouter(
     tags=['Reports']
 )
-
-datetime_regex = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"
-
-def validate_datetime(date_str: str) -> datetime:
-    if not re.match(datetime_regex, date_str):
-        raise HTTPException(status_code=400, detail="Invalid datetime format. Expected format: YYYY-MM-DDTHH:MM:SS")
-    try:
-        return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S")
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid datetime format. Expected format: YYYY-MM-DDTHH:MM:SS")
-
-def validate_dates(
-    start_date: Annotated[str, Query(example="2024-08-05T12:34:56", description="Please provide a date and time in the format YYYY-MM-DDTHH:MM:SS")],
-    end_time: Annotated[str, Query(example="2024-08-07T12:34:56", description="Please provide a date and time in the format YYYY-MM-DDTHH:MM:SS")],
-) -> tuple[datetime, datetime]:
-    start_date_dt = validate_datetime(start_date)
-    end_time_dt = validate_datetime(end_time)
-    if end_time_dt < start_date_dt:
-        raise HTTPException(status_code=400, detail="end_time cannot be earlier than start_date")
-    
-    # start_date_dt -= timedelta(hours=10)
-    # end_time_dt -= timedelta(hours=10)
-    
-    return start_date_dt, end_time_dt 
 
 
 @router.get(
@@ -65,7 +42,7 @@ async def generate_general_report(
 async def issues_report(
     uow: UowDep,
     request: Request,
-    dates: tuple[datetime, datetime] = Depends(validate_dates)
+    dates: tuple[datetime, datetime] = Depends(validate_dates),
 ):  
     try:
         issue_service = IssueService(uow)
@@ -80,7 +57,7 @@ async def issues_report(
     except Exception as error:
         logger.error(error)
         return error
-
+    
 
 @router.get(
     '/save_general_issues_report', 
@@ -98,3 +75,44 @@ async def save_issues_report(
         return error
     
 
+@router.post(
+    '/generate_general_issues_report_ver2', 
+)
+async def issues_report_ver2(
+    uow: UowDep,
+    issues_filters: IssuesFiltersSchema,
+    background_tasks: BackgroundTasks
+):  
+    try:
+        task_id = str(uuid4())
+        report_service = ReportService(uow)
+        background_tasks.add_task(report_service.generate_issues_report_ver2,issues_filters, task_id)
+
+        return {"task_id": task_id, "status_url": f"/issue-report-file-status/{task_id}"}
+        
+    except Exception as error:
+        logger.error(error)
+        return error
+    
+
+@router.get(
+    '/issue-report-file-status/{task_id}', 
+)
+async def get_report(
+    uow: UowDep,
+    task_id:str
+):
+    report_service = ReportService(uow)
+    status = await report_service.get_report_status(task_id)
+
+    match status:
+        case "processing":
+            return {"status": "processing"}
+        case "failed":
+            return {"status": "failed"}
+        case str() if status.endswith(".xlsx"):
+            return FileResponse(status, filename=f"report.xlsx", media_type="application/vnd.ms-excel")
+        case dict():
+            return {"error": "Invalid data format"}
+        case _:
+            return {"error": "Task not found"}

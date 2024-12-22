@@ -22,16 +22,6 @@ celery_app = Celery(
 )
 
 celery_app.conf.beat_schedule = {
-    # "get_facilities": {
-    #     "task": "tasks.amelia_organizations_tasks.sync_ficilities", 
-    #     # "schedule": timedelta(days=30),
-    #     "schedule": crontab(day_of_month="1", hour="0", minute="0"),
-    # },
-    # "get_compnanies": {
-    #     "task": "tasks.amelia_organizations_tasks.sync_companies", 
-    #     "schedule": crontab(day_of_month="1", hour="0", minute="0"),
-    # },
-
    "sync_current_archive_issues": {
         "task": "tasks.issues_tasks.orchestrator.sync_issues_current_archive_chord_job",
         "schedule": crontab(minute="0", hour='*/3'),
@@ -45,5 +35,10 @@ celery_app.conf.beat_schedule = {
     "sync_cache": {
         "task": "tasks.cache_tasks.update_building_cache",
         "schedule": crontab(minute="0", hour="3"),
-    }
+    },
+    "patch_users": {
+        "task": "tasks.organizations_tasks.patch_common_users",
+        "schedule": crontab(hour='*/2'),
+        "kwargs": {"delay": 3, "pages": 4}
+    },
 }

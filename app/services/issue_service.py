@@ -8,8 +8,10 @@ from openpyxl import Workbook
 from sqlalchemy import Row
 
 from app.celery.helpers import ShortIssue
-from app.schemas.issue_schemas import IssuePostSchema
-from app.schemas.user_schemas import UserPostSchema
+from app.db.models import work_category
+from app.schemas.issue_schemas import (FilteredIssue, FilteredIssuesGetSchema,
+                                       IssueFilters, IssuePostSchema,
+                                       IssuesFiltersSchema, ThinDict, WorkCat)
 from app.services.services_helper import with_uow
 from app.utils.unit_of_work import AbstractUnitOfWork
 
@@ -176,7 +178,7 @@ class IssueService():
                 return res
             else:
                 return await uow.issues_repo.get_all_external_ids()
-        
+
     @staticmethod
     async def get_all_external_ids_with_included_statuses(uow: AbstractUnitOfWork, service_id: int, statueses: list[str] = []) -> set[int]:
         async with uow:
@@ -199,4 +201,119 @@ class IssueService():
                 res_dict[iss_row[0]] = iss_row[1]
                  
             return res_dict
+
+    @with_uow
+    async def get_filtered_issues(
+        self,
+        filters: IssuesFiltersSchema
+    ) -> FilteredIssuesGetSchema:
+        try:
+            match filters.transition.statuses:
+                case []:
+                    statuses = await self.uow.statuses_history_repo.get_unique_statuses()
+                case _:
+                    statuses = filters.transition.statuses
+
+            page = filters.pagination.ofset
+            total_count: int = await self.uow.issues_repo.get_count()
+            filtered_count: int | None = await self.uow.issues_repo.get_count_issues_with_filters_for_report_ver2(
+                filters.creation.start_date,
+                filters.creation.end_date,
+                filters.transition.start_date,
+                filters.transition.end_date,
+                statuses,
+                filters.place.buildings_id,
+                filters.work.services_id,
+                filters.work.work_categories_id,
+                filters.place.rooms_id,
+                filters.priorities_id,
+                filters.urgency,
+                filters.pagination.limit,
+                page
+            )
+
+
+            rows: Sequence[Row] = await self.uow.issues_repo.get_issues_with_filters_for_report_ver2(
+                filters.creation.start_date,
+                filters.creation.end_date,
+                filters.transition.start_date,
+                filters.transition.end_date,
+                statuses,
+
+                filters.place.buildings_id,
+                filters.work.services_id,
+                filters.work.work_categories_id,
+                filters.place.rooms_id,
+                filters.priorities_id,
+                filters.urgency,
+
+                filters.pagination.limit,
+                page
+            )
+            issues: list[FilteredIssue] = []
+            for row in rows:
+                if row.last_status == "исполнена":
+                    end_date = row.created_at_last_stat
+                    close_date = None
+                elif row.predlast_status == "исполнена" and row.last_status == "закрыта":
+                    end_date = row.created_at_predlast_stat
+                    close_date = row.created_at_last_stat
+                else:
+                    end_date = close_date = None
+                room_title = row.room_title.split(" ")[0] if row.room_title else ""
+                filtered_iss: FilteredIssue = FilteredIssue(
+                    id=row.issue_id,
+                    service_title=row.service_title,
+                    wc_title=row.wc_title,
+                    iss_descr=row.iss_descr,
+                    
+                    last_status=row.last_status,
+
+                    created_at_first_stat=row.created_at_first_stat,
+                    end_date=end_date,
+                    close_date=close_date,
+                    finish_date_plan=row.finish_date_plane,
+
+                    rating=row.rating,
+                    building_title=row.building_title,
+                    room_title=room_title,
+                    work_place=row.work_place,
+
+                    prior_title=row.prior_title
+                )
+                issues.append(filtered_iss)
+                
+            res = FilteredIssuesGetSchema(
+                filtered_count=filtered_count or 0,
+                total_count=total_count,
+                issues=issues
+            )
+            return res
+             
+        except Exception as e:
+            logger.error(e)
+            logger.error(traceback.format_exc())
+            return None
+        
+    @with_uow
+    async def get_count(
+        self,
+    ) -> int:
+        return await self.uow.issues_repo.get_count()
+
+    @with_uow
+    async def get_filter_values(
+        self,
+    ) -> IssueFilters:
+        buildings = await self.uow.buildings_repo.get_all()
+        services = await self.uow.service_repo.get_all()
+        work_categories = await self.uow.work_categories_repo.get_all()
+        priorities = await self.uow.priority_repo.get_all()
+
+        return IssueFilters(
+            buildings=[ThinDict(id=e.id, title=e.title) for e in buildings],
+            services=[ThinDict(id=e.external_id, title=e.title) for e in services],
+            work_categories=[WorkCat(id=e.id, title=e.title, service_id=e.service_id) for e in work_categories],
+            priorities=[ThinDict(id=e.id, title=e.title) for e in priorities]
+        )
 
