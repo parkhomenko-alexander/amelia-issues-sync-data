@@ -309,11 +309,13 @@ class IssueService():
         services = await self.uow.service_repo.get_all()
         work_categories = await self.uow.work_categories_repo.get_all()
         priorities = await self.uow.priority_repo.get_all()
+        statuses = await self.uow.statuses_history_repo.get_unique_statuses()
 
         return IssueFilters(
             buildings=[ThinDict(id=e.id, title=e.title) for e in buildings],
             services=[ThinDict(id=e.external_id, title=e.title) for e in services],
             work_categories=[WorkCat(id=e.id, title=e.title, service_id=e.service_id) for e in work_categories],
-            priorities=[ThinDict(id=e.id, title=e.title) for e in priorities]
+            priorities=[ThinDict(id=e.id, title=e.title) for e in priorities],
+            statuses=statuses
         )
 

@@ -205,3 +205,4 @@ class IssueFilters(BaseUserModel):
     services: list[ThinDict]
     work_categories: list[WorkCat]
     priorities: list[ThinDict]
+    statuses: list[str]
