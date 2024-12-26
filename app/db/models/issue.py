@@ -41,7 +41,7 @@ class Issue(Base):
     declarer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id")) 
     executor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     room_id: Mapped[int | None] = mapped_column(ForeignKey("rooms.id", ondelete="SET NULL"))
-    # facility_id: Mapped[int] = mapped_column(ForeignKey("facilities.id"))
+    facility_id: Mapped[int| None] = mapped_column(ForeignKey("facilities.external_id"))
 
     work_category: Mapped["WorkCategory"] = relationship(back_populates="issues", uselist=False, foreign_keys=[work_category_id])
     service: Mapped["Service"] = relationship(back_populates="issues", uselist=False, foreign_keys=[service_id])

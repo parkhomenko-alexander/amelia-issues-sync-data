@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import Sequence
 
-from sqlalchemy import (CTE, BinaryExpression, Result, Row, Select, and_,
-                        between, desc, func, select)
+from sqlalchemy import (CTE, BinaryExpression, ColumnElement, Result, Row,
+                        Select, and_, between, desc, func, select)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import Building, Company
@@ -195,8 +195,8 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         priorities_id: list[int]=[],
         urgencies: list[str]=[],
 
-    ) -> list[BinaryExpression]:
-        conditions: list[BinaryExpression] = []
+    ) -> list[ColumnElement]:
+        conditions: list[ColumnElement] = []
 
         if buildings_id:
             conditions.append(self.model.building_id.in_(buildings_id))
@@ -210,7 +210,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
             conditions.append(self.model.priority_id.in_(priorities_id))
         if urgencies:
             conditions.append(self.model.urgency.in_(urgencies))
-
+        conditions.append(self.model.facility_id==2)
         return conditions
 
     
@@ -231,7 +231,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         page: int = 0
     ) -> Sequence[Row]:
         
-        conditions: list[BinaryExpression] = self.prepare_conditions(buildings_id, services_id, works_category_id, rooms_id, priorities_id,
+        conditions: list[ColumnElement] = self.prepare_conditions(buildings_id, services_id, works_category_id, rooms_id, priorities_id,
             urgencies
         )
 
@@ -312,6 +312,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
                 filter_trinsition_issues_cte.c.issue_id,
             )
             .join(issues_created_filtered_by_time_range_cte, filter_trinsition_issues_cte.c.issue_id == issues_created_filtered_by_time_range_cte.c.issue_id)
+            .order_by(filter_trinsition_issues_cte.c.issue_id.desc())
             .limit(limit)
             .offset(limit*page)
             .cte()
@@ -407,7 +408,6 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
                 Building.title.label("building_title"),
                 Room.title.label("room_title"),
                 Priority.title.label("prior_title"),
-                
             )
             .join(self.model, join_transition_with_cretion_at_time_cte.c.issue_id == self.model.external_id)
             .join(Service, self.model.service_id == Service.external_id)
@@ -442,7 +442,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
     page: int = 0
 ) -> int | None:
     
-        conditions: list[BinaryExpression] = self.prepare_conditions(buildings_id, services_id, works_category_id, rooms_id, priorities_id,
+        conditions: list[ColumnElement] = self.prepare_conditions(buildings_id, services_id, works_category_id, rooms_id, priorities_id,
             urgencies
         )
 

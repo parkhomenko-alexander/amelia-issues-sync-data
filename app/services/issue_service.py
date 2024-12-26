@@ -215,7 +215,7 @@ class IssueService():
                     statuses = filters.transition.statuses
 
             page = filters.pagination.ofset
-            total_count: int = await self.uow.issues_repo.get_count()
+            total_count: int = await self.uow.issues_repo.get_filtered_and(facility_id=2)
             filtered_count: int | None = await self.uow.issues_repo.get_count_issues_with_filters_for_report_ver2(
                 filters.creation.start_date,
                 filters.creation.end_date,

@@ -10,23 +10,23 @@ from app.schemas.issue_schemas import (CreationTime, IssuesFiltersSchema,
 datetime_regex = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"
 
 def  filters_dep(
-transition_start_date: datetime = Query(
-        start_date, example="2024-09-10T00:00:00", alias="transitionStartDate"
+    transition_start_date: datetime = Query(
+        start_date(), example="2024-09-10T00:00:00", alias="transitionStartDate"
     ),
     transition_end_date: datetime = Query(
-        end_date, example="2024-09-30T00:00:00", alias="transitionEndDate"
+        end_date(), example="2024-09-30T00:00:00", alias="transitionEndDate"
     ),
     transition_statuses: list[str] = Query(
         [], example=["взята в работу", "новая"], alias="transitionStatuses"
     ),
     place_buildings_id: list[int] = Query(
-        [45, 46], alias="placeBuildingsId"
+        [], alias="placeBuildingsId"
     ),
     creation_start_date: datetime = Query(
-        start_date, example="2024-08-05T00:00:00", alias="creationStartDate"
+        start_date(), example="2024-08-05T00:00:00", alias="creationStartDate"
     ),
     creation_end_date: datetime = Query(
-        end_date, example="2024-09-05T00:00:00", alias="creationEndDate"
+        end_date(), example="2024-09-05T00:00:00", alias="creationEndDate"
     ),
     work_services_id: list[int] = Query(
         [], example=[7, 10], alias="workServicesId",

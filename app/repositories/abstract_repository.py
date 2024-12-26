@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Generic, Optional, Sequence, Type, TypeVar
 
 from pydantic import BaseModel
-from sqlalchemy import delete, insert, or_, select, update
+from sqlalchemy import and_, delete, func, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import count
 
@@ -111,11 +111,26 @@ class SQLAlchemyRepository(AbstractRepository[T]):
         res = await self.async_session.execute(*stmt)
         return 0
     
-    async def get_count(self) -> int:
+    async def get_count(self, **kwargs) -> int:
         stmt = (
             count(self.model.id)
+            .filter_by(and_(**kwargs))
         )
 
+        res = await self.async_session.execute(stmt)
+        c = res.scalar_one()
+        return c
+    
+    async def get_filtered_and(self, **kwargs) -> int:
+        subq = (
+            select(self.model.id)
+            .filter_by(**kwargs)
+        )
+        stmt = (
+            select(
+                func.count()
+            ).select_from(subq.subquery())
+        )
         res = await self.async_session.execute(stmt)
         c = res.scalar_one()
         return c
