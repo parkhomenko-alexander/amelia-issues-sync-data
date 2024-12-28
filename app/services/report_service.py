@@ -82,9 +82,10 @@ class ReportService:
                     if row.last_status == "исполнена":
                         end_date = row.created_at_last_stat
                         close_date = ""
-                    elif row.predlast_status == "исполнена" and row.last_status == "закрыта":
+                    elif row.predlast_status == "исполнена" and row.last_status == "закрыта" :
                         end_date = row.created_at_predlast_stat
                         close_date = row.created_at_last_stat
+                    # ! отказано
                     else:
                         end_date = close_date = ""
                     room_title = row.room_title.split(" ")[0] if row.room_title else ""

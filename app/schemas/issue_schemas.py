@@ -45,28 +45,46 @@ class IssuePostSchema(GeneralSchema):
 
 class IssueReportSchema(BaseUserModel):
     ...
-    
+
+
+def start_date() -> datetime:
+    return datetime(2020, 7, 1, 0, 0, 0)
+
+def end_date() -> datetime:
+    return datetime.now() + timedelta(days=10)
+
+
 class IssueReportDataSchema(BaseUserModel):
     start_date: datetime = Field(description="123.45") 
     end_date: str = Field(description="123.45") 
 
-
 class CreationTime(BaseUserModel):
     start_date: datetime = Field(
+        default_factory=start_date,
         examples=["2024-08-05T00:00:00"],
         description="Start date and time in ISO format."
     )
     end_date: datetime = Field(
+        default_factory=end_date,
         examples=["2024-09-05T00:00:00"],
         description="End date and time in ISO format."
     )
 
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def replace_null_with_default(cls, value, field):
+        if value is None:
+            return start_date() if field.field_name == "start_date" else end_date()
+        return value
+
 class TransitionStatuses(BaseUserModel):
     start_date: datetime = Field(
+        default_factory=start_date,
         examples=["2024-09-10T00:00:00"],
         description="End date and time in ISO format."
     )
     end_date: datetime = Field(
+        default_factory=end_date,
         examples=["2024-09-30T00:00:00"],
         description="End date and time in ISO format."
     )
@@ -75,6 +93,13 @@ class TransitionStatuses(BaseUserModel):
         examples=[["взята в работу"]],
         description="Buildings"
     )
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def replace_null_with_default(cls, value, field):
+        if value is None:
+            return start_date() if field.field_name == "start_date" else end_date()
+        return value
 
 class Place(BaseUserModel):
     buildings_id: list[int] = Field(
@@ -105,11 +130,6 @@ class Pagination(BaseUserModel):
     limit: int = Field(50, ge=10, le=150)
     ofset: int = Field(0, ge=0)
 
-def start_date() -> datetime:
-    return datetime(2020, 7, 1, 0, 0, 0)
-
-def end_date() -> datetime:
-    return datetime.now() + timedelta(days=10)
 
 def transition_statuses_factory() -> TransitionStatuses:
     return TransitionStatuses(
