@@ -127,7 +127,7 @@ class Work(BaseUserModel):
     )
 
 class Pagination(BaseUserModel):
-    limit: int = Field(50, ge=10, le=150)
+    limit: int = Field(50, ge=10, le=10000)
     ofset: int = Field(0, ge=0)
 
 

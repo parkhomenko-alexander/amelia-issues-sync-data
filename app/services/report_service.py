@@ -24,6 +24,21 @@ class ReportService:
             cls._instance.active_reports = {}
         return cls._instance
 
+    def split_list_into_three_parts(self, ids):
+        third = len(ids) // 3  # Integer division to get one third of the list length
+        remainder = len(ids) % 3  # Check if there is a remainder
+
+        # Calculate the split indices
+        first_part_end = third + (1 if remainder > 0 else 0)
+        second_part_end = 2 * third + (1 if remainder > 1 else 0)
+
+        # Split the list into three parts
+        part1 = tuple(ids[:first_part_end])
+        part2 = tuple(ids[first_part_end:second_part_end])
+        part3 = tuple(ids[second_part_end:])
+
+        return part1, part2, part3
+
     @with_uow
     async def generate_issues_report_ver2(
         self,
@@ -61,42 +76,45 @@ class ReportService:
             result_len = 1
             row_ind = 1
             page = filters.pagination.ofset
-            while result_len <= filters.pagination.limit and result_len != 0:
-                rows: Sequence[Row] = await self.uow.issues_repo.get_issues_with_filters_for_report_ver2(
-                    filters.creation.start_date,
-                    filters.creation.end_date,
-                    filters.transition.start_date,
-                    filters.transition.end_date,
-                    statuses,
-                    filters.place.buildings_id,
-                    filters.work.services_id,
-                    filters.work.work_categories_id,
-                    filters.place.rooms_id,
-                    filters.priorities_id,
-                    filters.urgency,
-                    filters.pagination.limit,
-                    page
+            ids = await self.uow.issues_repo.get_issue_ids_with_filters_for_report_ver2(
+                filters.creation.start_date,
+                filters.creation.end_date,
+                filters.transition.start_date,
+                filters.transition.end_date,
+                statuses,
+                filters.place.buildings_id,
+                filters.work.services_id,
+                filters.work.work_categories_id,
+                filters.place.rooms_id,
+                filters.priorities_id,
+                filters.urgency,
+            )
+            chunks = self.split_list_into_three_parts(ids)
+
+            for chunk in chunks:
+                rows: Sequence[Row] = await self.uow.issues_repo.get_filtered_issues_for_report_ver2(
+                    chunk
                 )
 
-                for row in rows:
+                for row in reversed(rows):
                     if row.last_status == "исполнена":
-                        end_date = row.created_at_last_stat
+                        end_date = row.last_status_created
                         close_date = ""
-                    elif row.predlast_status == "исполнена" and row.last_status == "закрыта" :
-                        end_date = row.created_at_predlast_stat
-                        close_date = row.created_at_last_stat
+                    elif row.pred_status == "исполнена" and row.last_status == "закрыта" :
+                        end_date = row.pred_status_created
+                        close_date = row.last_status_created
                     # ! отказано
                     else:
                         end_date = close_date = ""
                     room_title = row.room_title.split(" ")[0] if row.room_title else ""
-                    worksheet.write(row_ind, 0, row.issue_id)
+                    worksheet.write(row_ind, 0, row.external_id)
                     worksheet.write(row_ind, 1, row.service_title)
                     worksheet.write(row_ind, 2, row.wc_title)
                     worksheet.write(row_ind, 3, row.iss_descr)
 
                     worksheet.write(row_ind, 4, row.last_status)
                     
-                    worksheet.write(row_ind, 5, row.created_at_first_stat, datetime_format)
+                    worksheet.write(row_ind, 5, row.first_status_created, datetime_format)
                     worksheet.write(row_ind, 6, end_date, datetime_format)
                     worksheet.write(row_ind, 7, close_date, datetime_format)
                     worksheet.write(row_ind, 8, row.finish_date_plane, datetime_format)
@@ -110,10 +128,8 @@ class ReportService:
                     worksheet.write(row_ind, 13, row.prior_title)
                     worksheet.write(row_ind, 14, row.urgency)
 
-                    row_ind += 1 
+                    row_ind += 1
 
-                result_len = len(rows)
-                page += 1
 
             date_column_legth = 20
             worksheet.set_column(5, 5, date_column_legth)
