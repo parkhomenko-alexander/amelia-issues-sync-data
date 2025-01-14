@@ -40,7 +40,6 @@ class ReportService:
         filters: IssuesFiltersSchema,
         task_id: str
     ) -> str | None:
-        logger.info(hex(id(self.uow)))
         await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status", "processing")
 
         output_file = await self.get_report_path() + f"/issues_report_{task_id}.xlsx"  # Уникальный файл для задачи

@@ -59,7 +59,6 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 
     async def __aenter__(self):
         self.async_session: AsyncSession = self.async_session_factory()
-        logger.info(f"Создана новая сессия: {hex(id(self.async_session))}")
         
         self.service_repo = ServiceRepository(self.async_session)
         self.buildings_repo = BuildingRepository(self.async_session)
