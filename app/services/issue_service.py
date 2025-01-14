@@ -12,6 +12,7 @@ from app.db.models import work_category
 from app.schemas.issue_schemas import (FilteredIssue, FilteredIssuesGetSchema,
                                        IssueFilters, IssuePostSchema,
                                        IssuesFiltersSchema, ThinDict, WorkCat)
+from app.schemas.status_schemas import HistoryStatusRecord
 from app.services.services_helper import with_uow
 from app.utils.unit_of_work import AbstractUnitOfWork
 
@@ -319,3 +320,32 @@ class IssueService():
             statuses=statuses
         )
 
+    @with_uow
+    async def bulk_insert_new_issues_with_statuses(self, issues: list[IssuePostSchema], statuses: list[HistoryStatusRecord]) -> int:
+        issues_dumped = [e.model_dump() for e in issues]
+        statuses_dumped = [e.model_dump() for e in statuses]
+
+        try:
+            await self.uow.issues_repo.bulk_insert(issues_dumped)
+            await self.uow.status_repo.bulk_insert(statuses_dumped)
+            await self.uow.commit()
+        except Exception as e:
+            logger.error(f"Some error occurred: {e}")
+            return 1
+        logger.info(f"Issues between {issues[0].external_id}-{issues[-1].external_id} were inserted")
+        return 0
+
+    @with_uow
+    async def bulk_update_issues_with_statuses(self, issues: list[IssuePostSchema], statuses: list[HistoryStatusRecord]) -> int:
+        issues_dumped = [e.model_dump() for e in issues]
+        statuses_dumped = [e.model_dump() for e in statuses]
+
+        try:
+            await self.uow.issues_repo.bulk_update_by_external_ids(issues_dumped)
+            await self.uow.status_repo.bulk_update_by_external_ids(statuses_dumped)
+            await self.uow.commit()
+        except Exception as e:
+            logger.error(f"Some error occurred: {e}")
+            return 1
+        logger.info(f"Issues between {issues[0].external_id}-{issues[-1].external_id} were inserted")
+        return 0

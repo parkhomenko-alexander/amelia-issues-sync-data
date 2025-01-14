@@ -9,20 +9,15 @@ from sqlalchemy import Row
 
 from app.schemas.issue_schemas import IssuesFiltersSchema
 from app.services.services_helper import with_uow
+from app.utils.redis_manager import CachePrefixes, RedisManager
 from app.utils.unit_of_work import AbstractUnitOfWork
 
 
 class ReportService:
-    _instance = None
-    uow: AbstractUnitOfWork
-    active_reports: dict[str, str]
+    def __init__(self, uow, redis_manager: RedisManager):
+        self.uow = uow
+        self.redis_manager = redis_manager
 
-    def __new__(cls, uow: AbstractUnitOfWork):
-        if cls._instance is None:
-            cls._instance = super(ReportService, cls).__new__(cls)
-            cls._instance.uow = uow
-            cls._instance.active_reports = {}
-        return cls._instance
 
     def split_list_into_three_parts(self, ids):
         third = len(ids) // 3  # Integer division to get one third of the list length
@@ -45,8 +40,9 @@ class ReportService:
         filters: IssuesFiltersSchema,
         task_id: str
     ) -> str | None:
-        
-        self.active_reports[task_id] = "processing" 
+        logger.info(hex(id(self.uow)))
+        await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status", "processing")
+
         output_file = await self.get_report_path() + f"/issues_report_{task_id}.xlsx"  # Уникальный файл для задачи
         workbook = xlsxwriter.Workbook(output_file)
         worksheet = workbook.add_worksheet("Зявки")
@@ -138,7 +134,8 @@ class ReportService:
             worksheet.set_column(8, 8, date_column_legth)
 
             workbook.close()
-            self.active_reports[task_id] = output_file
+            await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status", "completed")
+            await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:file_path", output_file)
             logger.info(f"Report generated: {output_file}")
 
 
@@ -146,8 +143,7 @@ class ReportService:
              
         except Exception as e:
             logger.error(e)
-            logger.error(traceback.format_exc())
-            self.active_reports[task_id] = "failed"
+            await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status", "failed")
             return None
         
     @staticmethod
@@ -157,5 +153,7 @@ class ReportService:
         
         return file_path
 
-    async def get_report_status(self, task_id: str) -> str | dict[str, str]:
-        return self.active_reports.get(task_id, "Task not found")
+    async def get_report_status(self, task_id: str) -> dict:
+        status = await self.redis_manager.get_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status")
+        file_path = await self.redis_manager.get_cache(CachePrefixes.TASKS_INFO, f"{task_id}:file_path")
+        return {"status": status, "file_path": file_path}

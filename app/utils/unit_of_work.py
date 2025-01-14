@@ -1,26 +1,17 @@
 from abc import ABC, abstractmethod
 from typing import Type
 
-from app.db import db
-
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.repositories import (
-    BuildingRepository,
-    CompanyRepository,
-    FacilityRepository,
-    FloorRepository,
-    IssueRepository,
-    PriorityRepository,
-    RoomRepository,
-    ServiceRepository,
-    StatusRepository,
-    StatusHistoryRepository,
-    UserRepository,
-    WorkCategoryRepository,
-    WorkflowRepository,
-    TechPassportRepository
-)
+from app.db import db
+from app.repositories import (BuildingRepository, CompanyRepository,
+                              FacilityRepository, FloorRepository,
+                              IssueRepository, PriorityRepository,
+                              RoomRepository, ServiceRepository,
+                              StatusHistoryRepository, StatusRepository,
+                              TechPassportRepository, UserRepository,
+                              WorkCategoryRepository, WorkflowRepository)
 
 
 class AbstractUnitOfWork(ABC):
@@ -68,6 +59,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 
     async def __aenter__(self):
         self.async_session: AsyncSession = self.async_session_factory()
+        logger.info(f"Создана новая сессия: {hex(id(self.async_session))}")
         
         self.service_repo = ServiceRepository(self.async_session)
         self.buildings_repo = BuildingRepository(self.async_session)

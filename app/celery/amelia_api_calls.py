@@ -353,7 +353,7 @@ class AmeliaApi():
     def check_time_range(self, time_range: list[str]) -> list[str]:
         try:
             if time_range == []:
-                start_date = (date.today() - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+                start_date = date.today().strftime("%Y-%m-%dT%H:%M:%S")
                 end_date = (date.today() + timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%S")
                 return [start_date, end_date]
             

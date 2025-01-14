@@ -4,12 +4,13 @@ from uuid import uuid4
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 
-from app.api_v1.dependencies import UowDep
+from app.api_v1.dependencies import RedisManagerDep, UowDep
 from app.api_v1.report.dependencies import validate_dates
 from app.schemas.issue_schemas import IssuesFiltersSchema
 from app.services.issue_service import IssueService
 from app.services.report_service import ReportService
 from app.services.room_service import RoomService
+from app.utils.redis_manager import RedisManager
 from logger import logger
 
 router = APIRouter(
@@ -80,12 +81,15 @@ async def save_issues_report(
 )
 async def issues_report_ver2(
     uow: UowDep,
+    redis: RedisManagerDep,
     issues_filters: IssuesFiltersSchema,
     background_tasks: BackgroundTasks
 ):  
     try:
         task_id = str(uuid4())
-        report_service = ReportService(uow)
+        logger.info(task_id)
+
+        report_service = ReportService(uow, redis_manager=redis)
         background_tasks.add_task(report_service.generate_issues_report_ver2,issues_filters, task_id)
 
         return {"task_id": task_id, "status_url": f"/issue-report-file-status/{task_id}"}
@@ -94,24 +98,26 @@ async def issues_report_ver2(
         logger.error(error)
         return error
     
+ 
 
 @router.get(
     '/issue-report-file-status/{task_id}', 
 )
 async def get_report(
     uow: UowDep,
+    redis: RedisManagerDep,
     task_id:str
 ):
-    report_service = ReportService(uow)
-    status = await report_service.get_report_status(task_id)
-
+    report_service = ReportService(uow, redis_manager=redis)
+    res = await report_service.get_report_status(task_id)
+    status = res["status"]
     match status:
         case "processing":
             return {"status": "processing"}
         case "failed":
             return {"status": "failed"}
-        case str() if status.endswith(".xlsx"):
-            return FileResponse(status, filename=f"report.xlsx", media_type="application/vnd.ms-excel")
+        case "completed":
+            return FileResponse(res["file_path"], filename=f"report.xlsx", media_type="application/vnd.ms-excel")
         case dict():
             return {"error": "Invalid data format"}
         case _:

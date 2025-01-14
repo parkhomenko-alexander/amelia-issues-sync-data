@@ -1,18 +1,18 @@
-from sqlalchemy import NullPool
-from sqlalchemy.ext.asyncio import (
-    create_async_engine,
-    async_sessionmaker,
-    AsyncEngine
-)
+from sqlalchemy import NullPool, StaticPool
+from sqlalchemy.ext.asyncio import (AsyncEngine, async_sessionmaker,
+                                    create_async_engine)
 
 from config import config
+
 
 class Database:
     def __init__(self, url: str, echo: bool = False):
         self.engine: AsyncEngine = create_async_engine(
             url,
             echo=echo,
-            poolclass=NullPool
+            pool_size=5,
+            max_overflow=10,
+            future=True
         )
     
         self.async_session_factory: async_sessionmaker = async_sessionmaker(
