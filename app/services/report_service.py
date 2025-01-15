@@ -143,10 +143,15 @@ class ReportService:
 
 
             date_column_legth = 20
+            prior_len = 14
             worksheet.set_column(5, 5, date_column_legth)
             worksheet.set_column(6, 6, date_column_legth)
             worksheet.set_column(7, 7, date_column_legth)
             worksheet.set_column(8, 8, date_column_legth)
+
+            worksheet.set_column(13, 13, prior_len)
+            worksheet.set_column(14, 14, prior_len)
+            worksheet.set_column(15, 15, prior_len)
 
             workbook.close()
             await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status", "completed")
