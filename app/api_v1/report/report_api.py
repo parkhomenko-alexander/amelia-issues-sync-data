@@ -1,8 +1,9 @@
 from datetime import datetime
+from typing import AsyncGenerator
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from app.api_v1.dependencies import RedisManagerDep, UowDep
 from app.api_v1.report.dependencies import validate_dates
@@ -17,6 +18,13 @@ router = APIRouter(
     tags=['Reports']
 )
 
+
+async def file_streamer(file_path: str) -> AsyncGenerator[bytes, None]:
+    """Streams file content in chunks."""
+    with open(file_path, "rb") as file:
+        while chunk := file.read(1024 * 1024):
+            yield chunk
+            
 
 @router.get(
     '/general_rooms_report', 
@@ -117,7 +125,11 @@ async def get_report(
         case "failed":
             return {"status": "failed"}
         case "completed":
-            return FileResponse(res["file_path"], filename=f"report.xlsx", media_type="application/vnd.ms-excel")
+            return StreamingResponse(
+                file_streamer(res["file_path"]),
+                media_type="application/vnd.ms-excel",
+                headers={"Content-Disposition": f"attachment; filename=report.xlsx"}
+            )
         case dict():
             return {"error": "Invalid data format"}
         case _:
