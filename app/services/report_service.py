@@ -1,5 +1,6 @@
 import os
 import traceback
+from datetime import datetime
 from typing import Sequence
 from uuid import uuid4
 
@@ -47,19 +48,18 @@ class ReportService:
         worksheet = workbook.add_worksheet("Зявки")
         
         bold_format = workbook.add_format({"bold": True})
-        datetime_format = workbook.add_format({"num_format": "yyyy-mm-dd hh:mm:ss"})
 
         headers = [
             "id", "сервис", "услуга", "описание",
             "статус",
             "дата создания", "дата исполнения", "дата закрытия", "плановая дата исполнения",
             "оценка", "строение", "помещение", "место проведения", 
-            "приоритет", "срочность"
+            "приоритет", "срочность", "просрочено"
         ]
 
         for col, header in enumerate(headers):
             worksheet.write(0, col, header, bold_format)
-
+        current_time = datetime.now()
         try:
 
             match filters.transition.statuses:
@@ -68,9 +68,7 @@ class ReportService:
                 case _:
                     statuses = filters.transition.statuses
             
-            result_len = 1
             row_ind = 1
-            page = filters.pagination.ofset
             ids = await self.uow.issues_repo.get_issue_ids_with_filters_for_report_ver2(
                 filters.creation.start_date,
                 filters.creation.end_date,
@@ -85,7 +83,7 @@ class ReportService:
                 filters.urgency,
             )
             chunks = self.split_list_into_three_parts(ids)
-
+            
             for chunk in chunks:
                 rows: Sequence[Row] = await self.uow.issues_repo.get_filtered_issues_for_report_ver2(
                     chunk
@@ -101,27 +99,45 @@ class ReportService:
                     # ! отказано
                     else:
                         end_date = close_date = ""
-                    room_title = row.room_title.split(" ")[0] if row.room_title else ""
-                    worksheet.write(row_ind, 0, row.external_id)
-                    worksheet.write(row_ind, 1, row.service_title)
-                    worksheet.write(row_ind, 2, row.wc_title)
-                    worksheet.write(row_ind, 3, row.iss_descr)
-
-                    worksheet.write(row_ind, 4, row.last_status)
                     
-                    worksheet.write(row_ind, 5, row.first_status_created, datetime_format)
-                    worksheet.write(row_ind, 6, end_date, datetime_format)
-                    worksheet.write(row_ind, 7, close_date, datetime_format)
-                    worksheet.write(row_ind, 8, row.finish_date_plane, datetime_format)
+                    compare_date = end_date if end_date else current_time
+
+                    if row.finish_date_plane and compare_date > row.finish_date_plane:
+                        overdue = "просрочена"
+                    else:
+                        overdue = ""
+                    
+                    end_date_formatted = end_date.strftime('%Y-%m-%d %H:%M:%S') if end_date else ""
+                    close_date_formatted = close_date.strftime('%Y-%m-%d %H:%M:%S') if close_date else ""
+                    finish_date_plane_formatted = (
+                        row.finish_date_plane.strftime('%Y-%m-%d %H:%M:%S') if row.finish_date_plane else ""
+                    )
+                    first_status_created_formatted = (
+                        row.first_status_created.strftime('%Y-%m-%d %H:%M:%S') if row.first_status_created else ""
+                    )
+                    
+                    room_title = row.room_title.split(" ")[0] if row.room_title else ""
+                    worksheet.write(row_ind, 0, row.external_id or "")
+                    worksheet.write(row_ind, 1, row.service_title or "")
+                    worksheet.write(row_ind, 2, row.wc_title or "")
+                    worksheet.write(row_ind, 3, f"'{row.iss_descr}" or "")
+
+                    worksheet.write(row_ind, 4, row.last_status or "")
+                    
+                    worksheet.write(row_ind, 5, first_status_created_formatted or "")
+                    worksheet.write(row_ind, 6, end_date_formatted or "")
+                    worksheet.write(row_ind, 7, close_date_formatted or "")
+                    worksheet.write(row_ind, 8, finish_date_plane_formatted or "")
 
 
-                    worksheet.write(row_ind, 9, row.rating)
-                    worksheet.write(row_ind, 10, row.building_title)
-                    worksheet.write(row_ind, 11, room_title)
-                    worksheet.write(row_ind, 12, row.work_place)
+                    worksheet.write(row_ind, 9, row.rating or "")
+                    worksheet.write(row_ind, 10, row.building_title or "")
+                    worksheet.write(row_ind, 11, room_title or "")
+                    worksheet.write(row_ind, 12, row.work_place or "")
 
-                    worksheet.write(row_ind, 13, row.prior_title)
-                    worksheet.write(row_ind, 14, row.urgency)
+                    worksheet.write(row_ind, 13, row.prior_title or "")
+                    worksheet.write(row_ind, 14, row.urgency or "")
+                    worksheet.write(row_ind, 15, overdue or "")
 
                     row_ind += 1
 

@@ -290,6 +290,8 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
             select(
                 issues_created_cte.c.issue_id,
                 issues_created_cte.c.min_external_status_id,
+            )
+            .where(
                 issues_created_cte.c.min_created_at.between(start_date, end_date)
             )
             .subquery()
