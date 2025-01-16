@@ -914,6 +914,7 @@ async def _sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] 
         issues_id_for_inserting = [iss_id for iss_id in issues_id if iss_id not in existed_issues_with_statuses]
         issues_id_for_updating = [iss_id for iss_id in issues_id if iss_id in existed_issues_with_statuses]
     
+    logger.info(f"Insert: {len(issues_id_for_inserting)}, update: {len(issues_id_for_updating)}")
     if issues_id_for_inserting != []:
         await sync_new_issues(issues_id_for_inserting)
     if issues_id_for_updating != []:
@@ -924,6 +925,6 @@ async def _sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] 
     logger.info(f"Issues sync task successfylly completed. " + f"{duration_in_minutes} minutes")
     return {}
 
-@celery_app.task
-def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
-    asyncio.run(_sync_issues_dynamic(issues_id = [], time_range = [], delay = config.API_CALLS_DELAY))
+# @celery_app.task
+# def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
+#     asyncio.run(_sync_issues_dynamic(issues_id = [], time_range = [], delay = config.API_CALLS_DELAY))
