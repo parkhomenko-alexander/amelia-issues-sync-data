@@ -19,18 +19,36 @@ from app.utils.unit_of_work import SqlAlchemyUnitOfWork
 
 def async_to_sync(task_func):
     @wraps(task_func)
+    # def wrapper(*args, **kwargs):
+    #     try:
+    #         loop = asyncio.get_event_loop()
+    #     except RuntimeError:
+    #         loop = None
+
+    #     if loop is None or not loop.is_running():
+    #         loop = asyncio.new_event_loop()
+    #         asyncio.set_event_loop(loop)
+    #         return loop.run_until_complete(task_func(*args, **kwargs))
+    #     else:
+    #         return asyncio.run(task_func(*args, **kwargs))
+
+    # return wrapper
+
     def wrapper(*args, **kwargs):
         try:
+            # Get the current event loop
             loop = asyncio.get_event_loop()
         except RuntimeError:
+            # No event loop in the current context
             loop = None
 
         if loop is None or not loop.is_running():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            return loop.run_until_complete(task_func(*args, **kwargs))
-        else:
+            # If no loop is running, create a new one
             return asyncio.run(task_func(*args, **kwargs))
+        else:
+            # If a loop is already running, use `create_task` and wait for the result
+            coroutine = task_func(*args, **kwargs)
+            return asyncio.ensure_future(coroutine)  # Use ensure_future for compatibility
 
     return wrapper
 

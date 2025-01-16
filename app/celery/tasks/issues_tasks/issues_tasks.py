@@ -921,3 +921,4 @@ async def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] =
     end = datetime.now()
     duration_in_minutes = (end - start).total_seconds() / 60
     logger.info(f"Issues sync task successfylly completed. " + f"{duration_in_minutes} minutes")
+    return {}
