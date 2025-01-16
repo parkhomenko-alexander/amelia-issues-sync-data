@@ -1,3 +1,4 @@
+import asyncio
 import stat
 from datetime import datetime
 from time import sleep
@@ -864,9 +865,9 @@ async def sync_existed_issues(issues_id: list[int], delay: float = config.API_CA
         await issue_service.bulk_update_issues_with_statuses(issues_for_updating, statuses)
 
 
-@celery_app.task
-@async_to_sync
-async def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
+# @celery_app.task
+# @async_to_sync
+async def _sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
     start  = datetime.now()
     uow = SqlAlchemyUnitOfWork()
     #? НЕ ЗАБЫТЬ поменять время и заюзать паге каунт 
@@ -922,3 +923,7 @@ async def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] =
     duration_in_minutes = (end - start).total_seconds() / 60
     logger.info(f"Issues sync task successfylly completed. " + f"{duration_in_minutes} minutes")
     return {}
+
+@celery_app.task
+def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
+    asyncio.run(_sync_issues_dynamic(issues_id = [], time_range = [], delay = config.API_CALLS_DELAY))
