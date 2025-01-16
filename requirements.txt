@@ -8,6 +8,7 @@ asyncpg==0.29.0
 billiard==4.2.0
 celery==5.3.6
 certifi==2024.2.2
+cffi==1.17.1
 charset-normalizer==3.3.2
 click==8.1.7
 click-didyoumean==0.3.0
@@ -20,7 +21,8 @@ decorator==5.1.1
 et-xmlfile==1.1.0
 fastapi==0.109.2
 flower==2.0.1
-greenlet==3.0.3
+gevent==24.11.1
+greenlet==3.1.1
 h11==0.14.0
 httptools==0.6.1
 humanize==4.9.0
@@ -39,13 +41,14 @@ prometheus_client==0.20.0
 prompt-toolkit==3.0.43
 psutil==5.9.8
 pure-eval==0.2.2
+pycparser==2.22
 pydantic==2.6.1
 pydantic-settings==2.1.0
 pydantic_core==2.16.2
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 pytz==2024.1
-pywin32;sys_platform == 'win32'
+pywin32==306
 PyYAML==6.0.1
 pyzmq==25.1.2
 redis==5.0.1
@@ -66,3 +69,5 @@ wcwidth==0.2.13
 websockets==12.0
 win32-setctime==1.1.0
 XlsxWriter==3.2.0
+zope.event==5.0
+zope.interface==7.2
