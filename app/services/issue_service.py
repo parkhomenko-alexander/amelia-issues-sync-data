@@ -192,10 +192,9 @@ class IssueService():
             return await uow.issues_repo.get_all_external_ids()
 
     @staticmethod
-    async def get_last_statuses_by_id(uow: AbstractUnitOfWork, issues: list[ShortIssue]) -> dict[int, str]:
+    async def get_last_statuses_by_id(uow: AbstractUnitOfWork, issues_id: list[int]) -> dict[int, str]:
         async with uow:
-            ids: list[int] = [iss.id for iss in issues]
-            res = await uow.issues_repo.get_last_statuses_by_id(ids)
+            res = await uow.issues_repo.get_last_statuses_by_id(issues_id)
             
             res_dict = {}
             for iss_row in res:
@@ -327,12 +326,12 @@ class IssueService():
 
         try:
             await self.uow.issues_repo.bulk_insert(issues_dumped)
-            await self.uow.status_repo.bulk_insert(statuses_dumped)
+            await self.uow.statuses_history_repo.bulk_insert(statuses_dumped)
             await self.uow.commit()
         except Exception as e:
             logger.error(f"Some error occurred: {e}")
             return 1
-        logger.info(f"Issues between {issues[0].external_id}-{issues[-1].external_id} were inserted")
+        logger.info(f"Issues between {issues[0].external_id}-{issues[-1].external_id} were inserted with statuses")
         return 0
 
     @with_uow
@@ -342,10 +341,10 @@ class IssueService():
 
         try:
             await self.uow.issues_repo.bulk_update_by_external_ids(issues_dumped)
-            await self.uow.status_repo.bulk_update_by_external_ids(statuses_dumped)
+            await self.uow.statuses_history_repo.bulk_insert(statuses_dumped)
             await self.uow.commit()
         except Exception as e:
             logger.error(f"Some error occurred: {e}")
             return 1
-        logger.info(f"Issues between {issues[0].external_id}-{issues[-1].external_id} were inserted")
+        logger.info(f"Issues between {issues[0].external_id}-{issues[-1].external_id} were updated with statuses")
         return 0

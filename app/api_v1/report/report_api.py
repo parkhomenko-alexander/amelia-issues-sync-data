@@ -24,7 +24,7 @@ async def file_streamer(file_path: str) -> AsyncGenerator[bytes, None]:
     with open(file_path, "rb") as file:
         while chunk := file.read(1024 * 1024):
             yield chunk
-            
+
 
 @router.get(
     '/general_rooms_report', 
@@ -66,7 +66,7 @@ async def issues_report(
     except Exception as error:
         logger.error(error)
         return error
-    
+
 
 @router.get(
     '/save_general_issues_report', 
@@ -82,7 +82,7 @@ async def save_issues_report(
     except Exception as error:
         logger.error(error)
         return error
-    
+
 
 @router.post(
     '/generate_general_issues_report_ver2', 
@@ -105,8 +105,7 @@ async def issues_report_ver2(
     except Exception as error:
         logger.error(error)
         return error
-    
- 
+
 
 @router.get(
     '/issue-report-file-status/{task_id}', 

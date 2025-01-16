@@ -1,4 +1,5 @@
 import stat
+from datetime import datetime
 from time import sleep
 from typing import Any, Sequence
 
@@ -763,8 +764,7 @@ async def sync_history_statuses(issue_ids: list[int], delay: float = config.API_
 
         for iss_id in issue_ids:
             page = 1
-            response_len = 10
-            while response_len <= 20 and response_len != 0:
+            while True:
                 params = amelia_api.create_json_for_request(APIGrids.ISSUES_STATUSES, page, issue_id=iss_id)
                 response = amelia_api.get(APIRoutes.ISSUES_STATUSES_WITH_QUERY, params=params)
             
@@ -777,11 +777,14 @@ async def sync_history_statuses(issue_ids: list[int], delay: float = config.API_
                     resp_status.issue_id = iss_id
                     statuses.append(resp_status)
                 sleep(delay)
+                if response_len < 20:
+                    break
+                page += 1
 
         external_ids = [e.external_id for e in statuses]
         statuses_existing_external_ids = await history_status_service.get_existing_external_ids(external_ids)
         elements_to_insert = [element for element in statuses if element.external_id not in statuses_existing_external_ids]
-        
+
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
         return []
@@ -856,12 +859,15 @@ async def sync_existed_issues(issues_id: list[int], delay: float = config.API_CA
         sleep(delay)
 
 
+    statuses = await sync_history_statuses(issues_id)
     if issues_for_updating != []:
-        statuses = await sync_history_statuses(issues_id)
-        await issue_service.bulk_insert_new_issues_with_statuses(issues_for_updating, statuses)
+        await issue_service.bulk_update_issues_with_statuses(issues_for_updating, statuses)
 
+
+@celery_app.task
+@async_to_sync
 async def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
-
+    start  = datetime.now()
     uow = SqlAlchemyUnitOfWork()
     #? НЕ ЗАБЫТЬ поменять время и заюзать паге каунт 
     amelia_api: AmeliaApi = AmeliaApi()
@@ -869,42 +875,47 @@ async def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] =
 
     issues_service = IssueService(uow)
 
-    if issues_id != []:
-        ...
-        return
+    if issues_id == []:
+        tr = amelia_api.check_time_range(time_range)
+        if tr == []:
+            logger.info("Stop sync process, wrong time range")
 
-    tr = amelia_api.check_time_range(time_range)
-    if tr == []:
-        logger.info("Stop sync process, wrong time range")
-
-    url: str = amelia_api.generate_query_params_issues(page=1, start_date=tr[0], end_date=tr[1])
-    dynamic_iss_response = amelia_api.get(APIRoutes.DYNAMIC_ISSUES + url)
-    if dynamic_iss_response is None:
-        logger.error("Dynamic issues response is none.")
-        return
-    response: DynamicIssuesResponse = DynamicIssuesResponse(**dynamic_iss_response.json())
-    page_count = response.page_count(amelia_api.pagination["per_page"])
-
-    issues: list[ShortIssue] = []
-
-    for i in range(1, 2):
-        url = amelia_api.generate_query_params_issues(page=i, start_date=tr[0], end_date=tr[1])
+        url: str = amelia_api.generate_query_params_issues(page=1, start_date=tr[0], end_date=tr[1])
         dynamic_iss_response = amelia_api.get(APIRoutes.DYNAMIC_ISSUES + url)
-
         if dynamic_iss_response is None:
             logger.error("Dynamic issues response is none.")
             return
+        response: DynamicIssuesResponse = DynamicIssuesResponse(**dynamic_iss_response.json())
+        page_count = response.page_count(amelia_api.pagination["per_page"])
 
-        response = DynamicIssuesResponse[ShortIssue](**dynamic_iss_response.json())
-        issues.extend(response.data)
+        issues: list[ShortIssue] = []
 
-    existed_issues_with_statuses = await issues_service.get_last_statuses_by_id(uow, issues)
+        for i in range(1, page_count):
+            url = amelia_api.generate_query_params_issues(page=i, start_date=tr[0], end_date=tr[1])
+            dynamic_iss_response = amelia_api.get(APIRoutes.DYNAMIC_ISSUES + url)
 
-    issues_id_for_inserting = [sh_iss.id for sh_iss in issues if sh_iss.id not in existed_issues_with_statuses]
-    issues_id_for_updating = [sh_iss.id for sh_iss in issues if sh_iss.id in existed_issues_with_statuses and sh_iss.state != existed_issues_with_statuses[sh_iss.id]]
+            if dynamic_iss_response is None:
+                logger.error("Dynamic issues response is none.")
+                return
 
-    await sync_new_issues(issues_id_for_inserting)
-    await sync_existed_issues(issues_id_for_updating)
+            response = DynamicIssuesResponse[ShortIssue](**dynamic_iss_response.json())
+            issues.extend(response.data)
+        issues_id = [iss.id for iss in issues]
 
-    logger.info(dynamic_iss_response)
+        existed_issues_with_statuses = await issues_service.get_last_statuses_by_id(uow, issues_id)
 
+        issues_id_for_inserting = [sh_iss.id for sh_iss in issues if sh_iss.id not in existed_issues_with_statuses]
+        issues_id_for_updating = [sh_iss.id for sh_iss in issues if sh_iss.id in existed_issues_with_statuses and sh_iss.state != existed_issues_with_statuses[sh_iss.id]]
+    else:
+        existed_issues_with_statuses = await issues_service.get_last_statuses_by_id(uow, issues_id)
+        issues_id_for_inserting = [iss_id for iss_id in issues_id if iss_id not in existed_issues_with_statuses]
+        issues_id_for_updating = [iss_id for iss_id in issues_id if iss_id in existed_issues_with_statuses]
+    
+    if issues_id_for_inserting != []:
+        await sync_new_issues(issues_id_for_inserting)
+    if issues_id_for_updating != []:
+        await sync_existed_issues(issues_id_for_updating)
+
+    end = datetime.now()
+    duration_in_minutes = (end - start).total_seconds() / 60
+    logger.info(f"Issues sync task successfylly completed. " + f"{duration_in_minutes} minutes")
