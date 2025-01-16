@@ -875,6 +875,8 @@ async def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] =
 
     issues_service = IssueService(uow)
 
+    logger.info(f"Start issues sync process")
+
     if issues_id == []:
         tr = amelia_api.check_time_range(time_range)
         if tr == []:
