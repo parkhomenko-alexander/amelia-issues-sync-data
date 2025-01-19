@@ -1,7 +1,7 @@
 import asyncio
 import stat
+from asyncio import sleep
 from datetime import datetime
-from time import sleep
 from typing import Any, Sequence
 
 from requests import Response
@@ -264,7 +264,8 @@ async def sync_archive(delay: float = config.API_CALLS_DELAY, service_external_i
 
                 params = amelia_api.create_json_for_request(APIGrids.ARCHIVE_ISSUES, page=i, service_id=service_id)
                 response = amelia_api.get(APIRoutes.ARCHIVE_ISSUES_WITH_QUERY, params=params)
-                sleep(delay)
+                await sleep(delay)
+
 
                 if response is None:
                     msg = "Current issues response is none"
@@ -420,7 +421,7 @@ async def sync_current_issues(delay: float = config.API_CALLS_DELAY, service_ext
 
                 params = amelia_api.create_json_for_request(APIGrids.CURRENT_ISSUES, page=i, service_id=service_id)
                 response = amelia_api.get(APIRoutes.CURRENT_ISSUES_WITH_QUERY, params=params)
-                sleep(delay)
+                await sleep(delay)
 
                 if response is None:
                     msg = "Current issues response is none"
@@ -590,7 +591,7 @@ async def sync_archive_by_pattern(delay: float = config.API_CALLS_DELAY, service
 
                 params = amelia_api.create_json_for_request(APIGrids.ARCHIVE_ISSUES, page=i, service_id=service_id)
                 response = amelia_api.get(APIRoutes.ARCHIVE_ISSUES_WITH_QUERY, params=params)
-                sleep(delay)
+                await sleep(delay)
 
                 if response is None:
                     msg = "Current issues response is none"
@@ -713,7 +714,7 @@ async def sync_archive_statuses(existing_issues_external_ids: Sequence[int] | No
             ext_issue_id = existing_issues_external_ids[i]
             params = amelia_api.create_json_for_request(APIGrids.ISSUES_STATUSES, 1, issue_id=ext_issue_id)
             response = amelia_api.get(APIRoutes.ISSUES_STATUSES_WITH_QUERY, params=params)
-            sleep(delay)
+            await sleep(delay)
 
             if response is None:
                 msg = "Issues history statuses response is none"
@@ -762,7 +763,6 @@ async def sync_history_statuses(issue_ids: list[int], delay: float = config.API_
 
     statuses: list[HistoryStatusRecord] = []
     try:
-
         for iss_id in issue_ids:
             page = 1
             while True:
@@ -777,11 +777,10 @@ async def sync_history_statuses(issue_ids: list[int], delay: float = config.API_
                 for resp_status in response_statuses_data.data:
                     resp_status.issue_id = iss_id
                     statuses.append(resp_status)
-                sleep(delay)
+                await sleep(delay)
                 if response_len < 20:
                     break
                 page += 1
-
         external_ids = [e.external_id for e in statuses]
         statuses_existing_external_ids = await history_status_service.get_existing_external_ids(external_ids)
         elements_to_insert = [element for element in statuses if element.external_id not in statuses_existing_external_ids]
@@ -832,7 +831,8 @@ async def sync_new_issues(issues_id: list[int], delay: float = config.API_CALLS_
 
         mapped_iss = await map_issue(iss, mappers)
         issues_for_inserting.append(mapped_iss)
-        sleep(delay)
+        await sleep(delay)
+
 
 
     statuses = await sync_history_statuses(issues_id)
@@ -857,7 +857,7 @@ async def sync_existed_issues(issues_id: list[int], delay: float = config.API_CA
 
         mapped_iss = await map_issue(iss, mappers)
         issues_for_updating.append(mapped_iss)
-        sleep(delay)
+        await sleep(delay) 
 
 
     statuses = await sync_history_statuses(issues_id)
@@ -919,12 +919,13 @@ async def _sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] 
         await sync_new_issues(issues_id_for_inserting)
     if issues_id_for_updating != []:
         await sync_existed_issues(issues_id_for_updating)
+    logger.info(f"Was inserted: {len(issues_id_for_inserting)}, updated: {len(issues_id_for_updating)}")
 
     end = datetime.now()
     duration_in_minutes = (end - start).total_seconds() / 60
     logger.info(f"Issues sync task successfylly completed. " + f"{duration_in_minutes} minutes")
-    return {}
 
-# @celery_app.task
-# def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
-#     asyncio.run(_sync_issues_dynamic(issues_id = [], time_range = [], delay = config.API_CALLS_DELAY))
+@celery_app.task
+def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
+    loop = asyncio.get_event_loop()
+    asyncio.ensure_future(_sync_issues_dynamic(issues_id = [], time_range = [], delay = config.API_CALLS_DELAY), loop=loop)

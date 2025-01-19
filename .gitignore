@@ -115,6 +115,9 @@ logs/
 alembic/vers
 app/celery/temp.py
 
+app/huey/temp.py
+app/huey/caller.py
+
 app/celery/celerybeat-schedule.bak
 app/celery/celerybeat-schedule.dat
 app/celery/celerybeat-schedule.dir

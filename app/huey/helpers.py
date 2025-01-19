@@ -1,11 +1,12 @@
 import asyncio
+import functools
 import json
 from ast import Tuple
 from functools import wraps
 from typing import Any, Generic, Type, TypeVar
 
 from pydantic import BaseModel
-from requests import Response
+from httpx import Response
 
 from app.schemas.tech_passport_schemas import TechPassportPostSchema
 from app.services.building_service import BuildingService
@@ -15,43 +16,20 @@ from app.services.service_service import ServiceService
 from app.services.user_service import UserService
 from app.services.workflow_service import WorkflowService
 from app.utils.unit_of_work import SqlAlchemyUnitOfWork
+from logger import logger 
 
-
-def async_to_sync(task_func):
-    @wraps(task_func)
+def run_async_task(func):
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
             loop = asyncio.get_event_loop()
         except RuntimeError:
-            loop = None
-
-        if loop is None or not loop.is_running():
             loop = asyncio.new_event_loop()
+            logger.info("A new event loop was spawned.")
             asyncio.set_event_loop(loop)
-            return loop.run_until_complete(task_func(*args, **kwargs))
-        else:
-            return asyncio.run(task_func(*args, **kwargs))
-
+            loop.run_forever()
+        loop.run_until_complete(func(*args, **kwargs))
     return wrapper
-
-    # def wrapper(*args, **kwargs):
-    #     try:
-    #         # Get the current event loop
-    #         loop = asyncio.get_event_loop()
-    #     except RuntimeError:
-    #         # No event loop in the current context
-    #         loop = None
-
-    #     if loop is None or not loop.is_running():
-    #         # If no loop is running, create a new one
-    #         return asyncio.run(task_func(*args, **kwargs))
-    #     else:
-    #         # If a loop is already running, use `create_task` and wait for the result
-    #         coroutine = task_func(*args, **kwargs)
-    #         return asyncio.ensure_future(coroutine)  # Use ensure_future for compatibility
-
-    # return wrapper
-
 
 
 
