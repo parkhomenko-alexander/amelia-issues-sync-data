@@ -82,76 +82,77 @@ class ReportService:
                 filters.priorities_id,
                 filters.urgency,
             )
-            chunks = self.split_list_into_three_parts(ids)
-            
-            for chunk in chunks:
-                rows: Sequence[Row] = await self.uow.issues_repo.get_filtered_issues_for_report_ver2(
-                    chunk
-                )
+            if ids != []:
 
-                for row in reversed(rows):
-                    if row.last_status == "исполнена":
-                        end_date = row.last_status_created
-                        close_date = ""
-                    elif row.pred_status == "исполнена" and row.last_status == "закрыта" :
-                        end_date = row.pred_status_created
-                        close_date = row.last_status_created
-                    # ! отказано
-                    else:
-                        end_date = close_date = ""
-                    
-                    compare_date = end_date if end_date else current_time
-
-                    if row.finish_date_plane and compare_date > row.finish_date_plane:
-                        overdue = "просрочена"
-                    else:
-                        overdue = ""
-                    
-                    end_date_formatted = end_date.strftime('%Y-%m-%d %H:%M:%S') if end_date else ""
-                    close_date_formatted = close_date.strftime('%Y-%m-%d %H:%M:%S') if close_date else ""
-                    finish_date_plane_formatted = (
-                        row.finish_date_plane.strftime('%Y-%m-%d %H:%M:%S') if row.finish_date_plane else ""
+                chunks = self.split_list_into_three_parts(ids)
+                
+                for chunk in chunks:
+                    rows: Sequence[Row] = await self.uow.issues_repo.get_filtered_issues_for_report_ver2(
+                        chunk
                     )
-                    first_status_created_formatted = (
-                        row.first_status_created.strftime('%Y-%m-%d %H:%M:%S') if row.first_status_created else ""
-                    )
-                    
-                    room_title = row.room_title.split(" ")[0] if row.room_title else ""
-                    worksheet.write(row_ind, 0, row.external_id or "")
-                    worksheet.write(row_ind, 1, row.service_title or "")
-                    worksheet.write(row_ind, 2, row.wc_title or "")
-                    worksheet.write(row_ind, 3, f"'{row.iss_descr}" or "")
 
-                    worksheet.write(row_ind, 4, row.last_status or "")
-                    
-                    worksheet.write(row_ind, 5, first_status_created_formatted or "")
-                    worksheet.write(row_ind, 6, end_date_formatted or "")
-                    worksheet.write(row_ind, 7, close_date_formatted or "")
-                    worksheet.write(row_ind, 8, finish_date_plane_formatted or "")
+                    for row in reversed(rows):
+                        if row.last_status == "исполнена":
+                            end_date = row.last_status_created
+                            close_date = ""
+                        elif row.pred_status == "исполнена" and row.last_status == "закрыта" :
+                            end_date = row.pred_status_created
+                            close_date = row.last_status_created
+                        # ! отказано
+                        else:
+                            end_date = close_date = ""
+                        
+                        compare_date = end_date if end_date else current_time
+
+                        if row.finish_date_plane and compare_date > row.finish_date_plane:
+                            overdue = "просрочена"
+                        else:
+                            overdue = ""
+                        
+                        end_date_formatted = end_date.strftime('%Y-%m-%d %H:%M:%S') if end_date else ""
+                        close_date_formatted = close_date.strftime('%Y-%m-%d %H:%M:%S') if close_date else ""
+                        finish_date_plane_formatted = (
+                            row.finish_date_plane.strftime('%Y-%m-%d %H:%M:%S') if row.finish_date_plane else ""
+                        )
+                        first_status_created_formatted = (
+                            row.first_status_created.strftime('%Y-%m-%d %H:%M:%S') if row.first_status_created else ""
+                        )
+                        
+                        room_title = row.room_title.split(" ")[0] if row.room_title else ""
+                        worksheet.write(row_ind, 0, row.external_id or "")
+                        worksheet.write(row_ind, 1, row.service_title or "")
+                        worksheet.write(row_ind, 2, row.wc_title or "")
+                        worksheet.write(row_ind, 3, f"'{row.iss_descr}" or "")
+
+                        worksheet.write(row_ind, 4, row.last_status or "")
+                        
+                        worksheet.write(row_ind, 5, first_status_created_formatted or "")
+                        worksheet.write(row_ind, 6, end_date_formatted or "")
+                        worksheet.write(row_ind, 7, close_date_formatted or "")
+                        worksheet.write(row_ind, 8, finish_date_plane_formatted or "")
 
 
-                    worksheet.write(row_ind, 9, row.rating or "")
-                    worksheet.write(row_ind, 10, row.building_title or "")
-                    worksheet.write(row_ind, 11, room_title or "")
-                    worksheet.write(row_ind, 12, row.work_place or "")
+                        worksheet.write(row_ind, 9, row.rating or "")
+                        worksheet.write(row_ind, 10, row.building_title or "")
+                        worksheet.write(row_ind, 11, room_title or "")
+                        worksheet.write(row_ind, 12, row.work_place or "")
 
-                    worksheet.write(row_ind, 13, row.prior_title or "")
-                    worksheet.write(row_ind, 14, row.urgency or "")
-                    worksheet.write(row_ind, 15, overdue or "")
+                        worksheet.write(row_ind, 13, row.prior_title or "")
+                        worksheet.write(row_ind, 14, row.urgency or "")
+                        worksheet.write(row_ind, 15, overdue or "")
 
-                    row_ind += 1
+                        row_ind += 1
 
+                date_column_legth = 20
+                prior_len = 14
+                worksheet.set_column(5, 5, date_column_legth)
+                worksheet.set_column(6, 6, date_column_legth)
+                worksheet.set_column(7, 7, date_column_legth)
+                worksheet.set_column(8, 8, date_column_legth)
 
-            date_column_legth = 20
-            prior_len = 14
-            worksheet.set_column(5, 5, date_column_legth)
-            worksheet.set_column(6, 6, date_column_legth)
-            worksheet.set_column(7, 7, date_column_legth)
-            worksheet.set_column(8, 8, date_column_legth)
-
-            worksheet.set_column(13, 13, prior_len)
-            worksheet.set_column(14, 14, prior_len)
-            worksheet.set_column(15, 15, prior_len)
+                worksheet.set_column(13, 13, prior_len)
+                worksheet.set_column(14, 14, prior_len)
+                worksheet.set_column(15, 15, prior_len)
 
             workbook.close()
             await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status", "completed")
@@ -162,7 +163,7 @@ class ReportService:
             return task_id
              
         except Exception as e:
-            logger.error(e)
+            logger.exception(e)
             await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status", "failed")
             return None
         
