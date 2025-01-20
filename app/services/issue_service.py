@@ -233,7 +233,7 @@ class IssueService():
             )
 
 
-            rows: Sequence[Row] = await self.uow.issues_repo.get_issues_with_filters_for_report_ver2(
+            rows: Sequence[Row] = await self.uow.issues_repo.get_issue_ids_with_filters_for_report_ver2(
                 filters.creation.start_date,
                 filters.creation.end_date,
                 filters.transition.start_date,
@@ -247,8 +247,6 @@ class IssueService():
                 filters.priorities_id,
                 filters.urgency,
 
-                filters.pagination.limit,
-                page
             )
             issues: list[FilteredIssue] = []
             for row in rows:
