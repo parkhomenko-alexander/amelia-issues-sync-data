@@ -57,7 +57,7 @@ async def sync_history_statuses(issue_ids: list[int], delay: float = config.API_
         logger.info(issue_ids)
         logger.info(external_ids)
         logger.info(statuses_existing_external_ids)
-        logger.info(elements_to_insert)
+        logger.info([(e.issue_id, e.external_id) for e in elements_to_insert])
 
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
