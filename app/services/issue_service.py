@@ -338,7 +338,7 @@ class IssueService():
     async def bulk_update_issues_with_statuses(self, issues: list[IssuePostSchema], statuses: list[HistoryStatusRecord]) -> int:
         issues_dumped = [e.model_dump() for e in issues]
         statuses_dumped = [e.model_dump() for e in statuses]
-
+        
         try:
             await self.uow.issues_repo.bulk_update_by_external_ids(issues_dumped)
             await self.uow.statuses_history_repo.bulk_insert(statuses_dumped)

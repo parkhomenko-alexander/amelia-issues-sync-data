@@ -54,6 +54,10 @@ async def sync_history_statuses(issue_ids: list[int], delay: float = config.API_
         external_ids = [e.external_id for e in statuses]
         statuses_existing_external_ids = await history_status_service.get_existing_external_ids(external_ids)
         elements_to_insert = [element for element in statuses if element.external_id not in statuses_existing_external_ids]
+        logger.info(issue_ids)
+        logger.info(external_ids)
+        logger.info(statuses_existing_external_ids)
+        logger.info(elements_to_insert)
 
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")
@@ -87,6 +91,7 @@ async def map_issue(iss: IssuePostSchema, mappers: dict) -> IssuePostSchema:
 async def sync_new_issues(issues_id: list[int], delay: float = config.API_CALLS_DELAY):
     amelia_api: AmeliaApiAsync = AmeliaApiAsync()
     await amelia_api.auth()
+    logger.info(f"Start new issues sync process: {issues_id[0]}")
 
     uow = SqlAlchemyUnitOfWork()
     issue_service = IssueService(uow)
@@ -113,6 +118,7 @@ async def sync_new_issues(issues_id: list[int], delay: float = config.API_CALLS_
 async def sync_existed_issues(issues_id: list[int], delay: float = config.API_CALLS_DELAY):
     amelia_api: AmeliaApiAsync = AmeliaApiAsync()
     await amelia_api.auth()
+    logger.info(f"Start existed issues sync process: {issues_id[0]}")
 
     uow = SqlAlchemyUnitOfWork()
     issue_service = IssueService(uow)
@@ -138,7 +144,6 @@ async def sync_existed_issues(issues_id: list[int], delay: float = config.API_CA
 
 
 @huey.task()
-# @huey.periodic_task(crontab(minute='*/20'))
 @run_async_task
 async def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
     start  = datetime.now()
@@ -192,6 +197,7 @@ async def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] =
         issues_id_for_inserting = [iss_id for iss_id in issues_id if iss_id not in existed_issues_with_statuses]
         issues_id_for_updating = [iss_id for iss_id in issues_id if iss_id in existed_issues_with_statuses]
     
+
     logger.info(f"Insert: {len(issues_id_for_inserting)}, update: {len(issues_id_for_updating)}")
     if issues_id_for_inserting != []:
         await sync_new_issues(issues_id_for_inserting)
