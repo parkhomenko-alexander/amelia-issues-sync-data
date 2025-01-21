@@ -443,7 +443,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
             .join(WorkCategory, self.model.work_category_id == WorkCategory.id)
             .join(Building, self.model.building_id == Building.id)
             .outerjoin(Room, self.model.room_id == Room.id)
-            .join(Priority, self.model.priority_id == Priority.id)
+            .outerjoin(Priority, self.model.priority_id == Priority.id)
         )
         query_res: Result = await self.async_session.execute(joined_issues)
         res:  Sequence[Row] = query_res.all()

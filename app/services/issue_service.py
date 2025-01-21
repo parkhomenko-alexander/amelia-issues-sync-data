@@ -289,7 +289,7 @@ class IssueService():
                     room_title=room_title,
                     work_place=row.work_place,
 
-                    prior_title=row.prior_title
+                    prior_title=row.prior_title or ""
                 )
                 issues.append(filtered_iss)
 
