@@ -7,9 +7,9 @@ from app.huey.organizations_tasks import patch_common_users
 from logger import logger
 
 
-@huey.periodic_task(crontab(minute='*/50'))
+@huey.periodic_task(crontab(minute='*/15'))
 def periodic_iss():
-    delay = 2.5
+    delay = 2
     
     sync_issues_dynamic(delay=delay)
 
@@ -18,7 +18,7 @@ def periodic_iss():
 
 @huey.periodic_task(crontab(minute='*/50'))
 def periodic_users():
-    delay = 1
+    delay = 2
     pages=2
 
     patch_common_users(pages=pages, delay=delay)
