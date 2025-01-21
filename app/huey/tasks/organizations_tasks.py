@@ -279,7 +279,6 @@ from logger import logger
 #     return
 
 
-# @huey.periodic_task(crontab(minute='*/20'))
 @huey.task()
 @run_async_task
 async def patch_common_users(pages: int = 1, delay: float = config.API_CALLS_DELAY):

@@ -15,7 +15,7 @@ from app.utils.unit_of_work import AbstractUnitOfWork
 
 
 class ReportService:
-    def __init__(self, uow, redis_manager: RedisManager):
+    def __init__(self, uow: AbstractUnitOfWork, redis_manager: RedisManager):
         self.uow = uow
         self.redis_manager = redis_manager
 
@@ -81,11 +81,14 @@ class ReportService:
                 filters.place.rooms_id,
                 filters.priorities_id,
                 filters.urgency,
+                limit = 1000000,
+                page = 0
             )
+            ids = sorted(ids, reverse=True)
             if ids != []:
 
                 chunks = self.split_list_into_three_parts(ids)
-                
+
                 for chunk in chunks:
                     rows: Sequence[Row] = await self.uow.issues_repo.get_filtered_issues_for_report_ver2(
                         chunk

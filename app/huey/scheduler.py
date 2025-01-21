@@ -2,8 +2,8 @@ from app.huey.huey_app import huey
 
 from huey import crontab
 
-from app.huey.issues_tasks import sync_issues_dynamic
-from app.huey.organizations_tasks import patch_common_users
+from app.huey.tasks.issues_tasks import sync_issues_dynamic
+from app.huey.tasks.organizations_tasks import patch_common_users
 from logger import logger
 
 

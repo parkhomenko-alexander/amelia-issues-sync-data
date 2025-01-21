@@ -229,7 +229,9 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         rooms_id: list[int]=[],
         priorities_id: list[int]=[],
         urgencies: list[str]=[],
-    ) -> Sequence[Row]:
+        limit: int=0,
+        page: int=0,
+    ) -> Sequence[int]:
         
         conditions: list[ColumnElement] = self.prepare_conditions(buildings_id, services_id, works_category_id, rooms_id, priorities_id,
             urgencies
@@ -250,8 +252,8 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         )
 
         
-        # query_res: Result = await self.async_session.execute(select(transition_in_statuses_by_period))
-        # res2: Sequence[Row] = query_res.all()
+        query_res: Result = await self.async_session.execute(select(transition_in_statuses_by_period))
+        res2: Sequence[Row] = query_res.all()
 
         # ! отфильтрованные по фильтрам
         filter_trinsition_issues_cte: Subquery = (
@@ -300,17 +302,18 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         # res5: Sequence[Row] = query_res.all()
 
         # ! итоговые id с которыми будет работа
-        join_transition_with_cretion_at_time_cte: Subquery = (
+        join_transition_with_cretion_at_time_cte: Select = (
             select(
                 filter_trinsition_issues_cte.c.issue_id,
             )
             .join(issues_created_filtered_by_time_range_cte, filter_trinsition_issues_cte.c.issue_id == issues_created_filtered_by_time_range_cte.c.issue_id)
             .order_by(filter_trinsition_issues_cte.c.issue_id.desc())
-            .subquery()
+            .limit(limit)
+            .offset(limit*page)
         )
 
-        query_res: Result = await self.async_session.execute(select(join_transition_with_cretion_at_time_cte))
-        res6:  Sequence[Row] = query_res.scalars().all()
+        query_res: Result = await self.async_session.execute(join_transition_with_cretion_at_time_cte)
+        res6:  Sequence[int] = query_res.scalars().all()
         return res6 
 
     async def get_filtered_issues_for_report_ver2(self, chunk: tuple[int, int]):
@@ -405,8 +408,8 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
             .subquery()
         )
 
-        query_res: Result = await self.async_session.execute(select(joined_times_subquery))
-        res13:  Sequence[Row] = query_res.all()
+        # query_res: Result = await self.async_session.execute(select(joined_times_subquery))
+        # res13:  Sequence[Row] = query_res.all()
 
         joined_issues: Select = (
             select(

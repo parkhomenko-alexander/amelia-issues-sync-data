@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Sequence
 
 from loguru import logger
+from numpy import sort
 from openpyxl import Workbook
 from sqlalchemy import Row
 
@@ -244,58 +245,54 @@ class IssueService():
                 filters.priorities_id,
                 filters.urgency,
 
+                filters.pagination.limit,
+                filters.pagination.ofset
             )
             issues: list[FilteredIssue] = []
             current_time = datetime.now()
+            iss_ids = sorted(iss_ids, reverse=True)
+            chunk = (iss_ids[0], iss_ids[-1])
+            rows = await self.uow.issues_repo.get_filtered_issues_for_report_ver2(chunk)
+            for row in reversed(rows):
+                if row.last_status == "исполнена":
+                    end_date = row.last_status_created
+                    close_date = None
+                elif row.pred_status == "исполнена" and row.last_status == "закрыта":
+                    end_date = row.pred_status_created
+                    close_date = row.last_status_created
+                else:
+                    end_date = close_date = None
+                room_title = row.room_title.split(" ")[0] if row.room_title else ""
 
-            limit = filters.pagination.limit
-            page = filters.pagination.ofset
-            shift = limit * page
-            if filtered_count and shift > filtered_count:
-                issues = []
-            else:
-                chunk = (iss_ids[shift], iss_ids[shift+limit-1])
-                rows = await self.uow.issues_repo.get_filtered_issues_for_report_ver2(chunk)
-                for row in rows:
-                    if row.last_status == "исполнена":
-                        end_date = row.last_status_created
-                        close_date = None
-                    elif row.pred_status == "исполнена" and row.last_status == "закрыта":
-                        end_date = row.pred_status_created
-                        close_date = row.last_status_created
-                    else:
-                        end_date = close_date = None
-                    room_title = row.room_title.split(" ")[0] if row.room_title else ""
+                compare_date = end_date if end_date else current_time
 
-                    compare_date = end_date if end_date else current_time
-
-                    if row.finish_date_plane and compare_date > row.finish_date_plane:
-                        overdue = "просрочена"
-                    else:
-                        overdue = ""
-                    
-                    filtered_iss: FilteredIssue = FilteredIssue(
-                        id=row.external_id,
-                        service_title=row.service_title,
-                        wc_title=row.wc_title,
-                        iss_descr=row.iss_descr,
-                        
-                        last_status=row.last_status,
-
-                        created_at_first_stat=row.first_status_created,
-                        end_date=end_date,
-                        close_date=close_date,
-                        finish_date_plan=row.finish_date_plane,
-
-                        rating=row.rating,
-                        building_title=row.building_title,
-                        room_title=room_title,
-                        work_place=row.work_place,
-
-                        prior_title=row.prior_title
-                    )
-                    issues.append(filtered_iss)
+                if row.finish_date_plane and compare_date > row.finish_date_plane:
+                    overdue = "просрочена"
+                else:
+                    overdue = ""
                 
+                filtered_iss: FilteredIssue = FilteredIssue(
+                    id=row.external_id,
+                    service_title=row.service_title,
+                    wc_title=row.wc_title,
+                    iss_descr=row.iss_descr,
+                    
+                    last_status=row.last_status,
+
+                    created_at_first_stat=row.first_status_created,
+                    end_date=end_date,
+                    close_date=close_date,
+                    finish_date_plan=row.finish_date_plane,
+
+                    rating=row.rating,
+                    building_title=row.building_title,
+                    room_title=room_title,
+                    work_place=row.work_place,
+
+                    prior_title=row.prior_title
+                )
+                issues.append(filtered_iss)
+
             res = FilteredIssuesGetSchema(
                 filtered_count=filtered_count or 0,
                 total_count=total_count,
