@@ -25,8 +25,8 @@ class IssuePostSchema(GeneralSchema):
     priority_title: str | None = Field(validation_alias="priority_title", exclude=True)
     executor_full_name: str | None = Field(validation_alias="executor_full_name", exclude=True)
     room_title: str | None = Field(None, validation_alias="room_title", exclude=True)
-    facility_id: int | None = Field(2, exclude=True)
 
+    facility_id: int | None = Field(2, validation_alias="facility_id")
     company_id: int | None = Field(None, validation_alias="company_id")
     service_id: int = Field(validation_alias="service_id")
     work_category_id: int | None = Field(None, validation_alias="work_category_id")

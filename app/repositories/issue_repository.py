@@ -461,8 +461,6 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
     rooms_id: list[int]=[],
     priorities_id: list[int]=[],
     urgencies: list[str]=[],
-    limit: int = 50, 
-    page: int = 0
 ) -> int | None:
     
         conditions: list[ColumnElement] = self.prepare_conditions(buildings_id, services_id, works_category_id, rooms_id, priorities_id,
@@ -484,8 +482,8 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         )
 
         
-        query_res: Result = await self.async_session.execute(select(transition_in_statuses_by_period))
-        res2: Sequence[Row] = query_res.all()
+        # query_res: Result = await self.async_session.execute(select(transition_in_statuses_by_period))
+        # res2: Sequence[Row] = query_res.all()
 
         # ! отфильтрованные по фильтрам
         filter_trinsition_issues_cte: CTE = (
@@ -503,8 +501,8 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
             .cte()
         )
 
-        query_res: Result = await self.async_session.execute(select(filter_trinsition_issues_cte))
-        res3: Sequence[Row] = query_res.all()
+        # query_res: Result = await self.async_session.execute(select(filter_trinsition_issues_cte))
+        # res3: Sequence[Row] = query_res.all()
 
         #! отфильтрованные по дате создания
         issues_created_cte: CTE = (
@@ -518,8 +516,8 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
             .cte()
         )
 
-        query_res: Result = await self.async_session.execute(select(issues_created_cte))
-        res4: Sequence[Row] = query_res.all()
+        # query_res: Result = await self.async_session.execute(select(issues_created_cte))
+        # res4: Sequence[Row] = query_res.all()
 
         issues_created_filtered_by_time_range_cte: CTE = (
             select(
@@ -537,8 +535,8 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
             .order_by(issues_created_cte.c.issue_id)
             .cte()
         )
-        query_res: Result = await self.async_session.execute(select(issues_created_filtered_by_time_range_cte))
-        res5: Sequence[Row] = query_res.all()
+        # query_res: Result = await self.async_session.execute(select(issues_created_filtered_by_time_range_cte))
+        # res5: Sequence[Row] = query_res.all()
 
         # ! итоговые id с которыми будет работа
         join_transition_with_cretion_at_time_cte: CTE = (

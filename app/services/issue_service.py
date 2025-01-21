@@ -228,8 +228,6 @@ class IssueService():
                 filters.place.rooms_id,
                 filters.priorities_id,
                 filters.urgency,
-                filters.pagination.limit,
-                page
             )
 
             iss_ids = await self.uow.issues_repo.get_issue_ids_with_filters_for_report_ver2(
