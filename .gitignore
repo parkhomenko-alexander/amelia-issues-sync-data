@@ -117,6 +117,7 @@ app/celery/temp.py
 
 app/huey/temp.py
 app/huey/caller.py
+app/huey/temp_cli.py
 
 app/celery/celerybeat-schedule.bak
 app/celery/celerybeat-schedule.dat

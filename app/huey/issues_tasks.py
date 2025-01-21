@@ -163,6 +163,7 @@ async def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] =
                 logger.info("Stop sync process, wrong time range")
         else:
             tr = time_range
+        logger.info(f"{tr}")
         url = amelia_api.generate_query_params_issues(page=1, start_date=tr[0], end_date=tr[1])
         params = amelia_api.encode_params(url)
         dynamic_iss_response = await amelia_api.get(APIRoutes.DYNAMIC_ISSUES + params)
