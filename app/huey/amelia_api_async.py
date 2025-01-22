@@ -315,7 +315,7 @@ class AmeliaApiAsync():
                     "4", "2,12,133,175", "8,18,129,178", "7"
                 ],
                 "filters[transition_date[from]]": kwargs["start_date"],
-                "filters[transition_date[to]]": kwargs["end_date"]
+                "filters[transition_date[to]]": kwargs["end_date"],
             }
 
             return params

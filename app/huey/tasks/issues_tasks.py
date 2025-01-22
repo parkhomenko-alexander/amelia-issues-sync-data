@@ -44,6 +44,7 @@ async def sync_history_statuses(issue_ids: list[int], delay: float = config.API_
                     return []
                 response_statuses_data: ReturnTypeFromJsonQuery[HistoryStatusRecord] = handle_response_of_json_query(response, HistoryStatusRecord)
                 response_len = len(response_statuses_data.data)
+                sts = ""
                 for resp_status in response_statuses_data.data:
                     resp_status.issue_id = iss_id
                     statuses.append(resp_status)
@@ -88,13 +89,11 @@ async def map_issue(iss: IssuePostSchema, mappers: dict) -> IssuePostSchema:
 
     return iss
 
-async def sync_new_issues(issues_id: list[int], delay: float = config.API_CALLS_DELAY):
+async def sync_issues(issues_id: list[int], delay: float = config.API_CALLS_DELAY):
     amelia_api: AmeliaApiAsync = AmeliaApiAsync()
     await amelia_api.auth()
-    logger.info(f"Start new issues sync process: {issues_id[0]}")
 
     uow = SqlAlchemyUnitOfWork()
-    issue_service = IssueService(uow)
     mappers: dict[str, Any] = await ServicesMappers.mappers(uow)
 
     issues_for_inserting: list[IssuePostSchema] = []
@@ -106,46 +105,16 @@ async def sync_new_issues(issues_id: list[int], delay: float = config.API_CALLS_
             logger.error(f"Issue {iss_id} request error")
             return []
         iss: IssuePostSchema = IssuePostSchema(**response.json()["common"]["data"])
-
-        mapped_iss = await map_issue(iss, mappers)
+        try:
+            mapped_iss = await map_issue(iss, mappers)
+        except Exception as er:
+            logger.error(f"Wrong mapping for issue {iss.external_id}")
+            continue
         issues_for_inserting.append(mapped_iss)
         await sleep(delay)
 
 
-
-    statuses = await sync_history_statuses(issues_id)
-    if issues_for_inserting != [] and statuses != []:
-        await issue_service.bulk_insert_new_issues_with_statuses(issues_for_inserting, statuses)
-
-async def sync_existed_issues(issues_id: list[int], delay: float = config.API_CALLS_DELAY):
-    amelia_api: AmeliaApiAsync = AmeliaApiAsync()
-    await amelia_api.auth()
-    logger.info(f"Start existed issues sync process: {issues_id[0]}")
-
-    uow = SqlAlchemyUnitOfWork()
-    issue_service = IssueService(uow)
-    mappers: dict[str, Any] = await ServicesMappers.mappers(uow)
-
-    issues_for_updating: list[IssuePostSchema] = []
-
-    for iss_id in issues_id:
-        response = await amelia_api.get(APIRoutes.ISSUE + "/" +str(iss_id))
-        if response and response.status_code == 404:
-            continue
-        if not response: 
-            logger.error(f"Issue {iss_id} request error")
-            return []
-        iss: IssuePostSchema = IssuePostSchema(**response.json()["common"]["data"])
-
-        mapped_iss = await map_issue(iss, mappers)
-        issues_for_updating.append(mapped_iss)
-        await sleep(delay) 
-
-
-    statuses = await sync_history_statuses(issues_id)
-    if issues_for_updating != []:
-        await issue_service.bulk_update_issues_with_statuses(issues_for_updating, statuses)
-
+    return issues_for_inserting
 
 @huey.task()
 @run_async_task
@@ -206,11 +175,22 @@ async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = []
         issues_id_for_updating = [iss_id for iss_id in issues_id if iss_id in existed_issues_with_statuses]
     
 
-    logger.info(f"Insert: {len(issues_id_for_inserting)}, update: {len(issues_id_for_updating)}")
+    logger.info(f"For insert: {len(issues_id_for_inserting)}, for update: {len(issues_id_for_updating)}")
+    
     if issues_id_for_inserting != []:
-        await sync_new_issues(issues_id_for_inserting)
+        logger.info(f"Sync new issues, start {issues_id_for_inserting[0]}")
+        mapped_iss = await sync_issues(issues_id_for_inserting, delay)
+        statuses = await sync_history_statuses([ms.external_id for ms in mapped_iss])
+        if mapped_iss != [] and statuses != []:
+            await issues_service.bulk_insert_new_issues_with_statuses(mapped_iss, statuses)
+
     if issues_id_for_updating != []:
-        await sync_existed_issues(issues_id_for_updating)
+        logger.info(f"Sync existed issues, start {issues_id_for_updating[0]}")
+        mapped_iss = await sync_issues(issues_id_for_updating, delay)
+        statuses = await sync_history_statuses([ms.external_id for ms in mapped_iss])
+        if mapped_iss != []:
+            await issues_service.bulk_update_issues_with_statuses(mapped_iss, statuses)
+
     logger.info(f"Was inserted: {len(issues_id_for_inserting)}, updated: {len(issues_id_for_updating)}")
 
     end = datetime.now()
