@@ -286,7 +286,7 @@ class IssueService():
 
                     rating=row.rating,
                     building_title=row.building_title,
-                    room_title=room_title,
+                    room_title=room_title or "",
                     work_place=row.work_place,
 
                     prior_title=row.prior_title or ""
