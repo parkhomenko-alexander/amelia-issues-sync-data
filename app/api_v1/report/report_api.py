@@ -110,7 +110,7 @@ async def issues_report_ver2(
 @router.get(
     '/issue-report-file-status/{task_id}', 
 )
-async def get_report(
+async def get_report_status(
     uow: UowDep,
     redis: RedisManagerDep,
     task_id:str
@@ -124,12 +124,26 @@ async def get_report(
         case "failed":
             return {"status": "failed"}
         case "completed":
-            return StreamingResponse(
-                file_streamer(res["file_path"]),
-                media_type="application/vnd.ms-excel",
-                headers={"Content-Disposition": f"attachment; filename=report.xlsx"}
-            )
+            return {"status": "completed"}
         case dict():
             return {"error": "Invalid data format"}
         case _:
             return {"error": "Task not found"}
+
+
+@router.get(
+    '/save-issue-report/{task_id}', 
+)
+async def save_report(
+    uow: UowDep,
+    redis: RedisManagerDep,
+    task_id:str
+):
+    report_service = ReportService(uow, redis_manager=redis)
+    res = await report_service.get_report_status(task_id)
+
+    return StreamingResponse(
+                file_streamer(res["file_path"]),
+                media_type="application/vnd.ms-excel",
+                headers={"Content-Disposition": f"attachment; filename=report.xlsx"}
+            )
