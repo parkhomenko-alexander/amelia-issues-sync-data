@@ -145,7 +145,7 @@ async def sync_existed_issues(issues_id: list[int], delay: float = config.API_CA
 
 @huey.task()
 @run_async_task
-async def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
+async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
     start  = datetime.now()
     uow = SqlAlchemyUnitOfWork()
     #? НЕ ЗАБЫТЬ поменять время и заюзать паге каунт 
@@ -172,8 +172,10 @@ async def sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] =
             logger.error("Dynamic issues response is none.")
             return
         response: DynamicIssuesResponse = DynamicIssuesResponse(**dynamic_iss_response.json())
-        page_count = response.page_count(amelia_api.pagination["per_page"])
-
+        if page is None:
+            page_count = response.page_count(amelia_api.pagination["per_page"])
+        else:
+            page_count = page
         issues: list[ShortIssue] = []
 
         for i in range(1, page_count):

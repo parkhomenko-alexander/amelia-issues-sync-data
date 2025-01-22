@@ -57,7 +57,7 @@ class DynamicIssuesResponse(BaseModel, Generic[T]):
     def page_count(self, per_page) -> int:
         if self.count.total == 0:
             return 0
-        return self.count.filtered // per_page + 1
+        return self.count.filtered // per_page + 2
 
 
 def handle_response_of_json_query(response: Response, model: Type[T]) -> ReturnTypeFromJsonQuery[T]:
