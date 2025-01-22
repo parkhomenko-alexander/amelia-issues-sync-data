@@ -116,8 +116,8 @@ async def sync_issues(issues_id: list[int], delay: float = config.API_CALLS_DELA
 
     return issues_for_inserting
 
-@huey.task()
-@run_async_task
+# @huey.task()
+# @run_async_task
 async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
     start  = datetime.now()
     uow = SqlAlchemyUnitOfWork()
@@ -167,12 +167,12 @@ async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = []
 
         existed_issues_with_statuses = await issues_service.get_last_statuses_by_id(uow, issues_id)
 
-        issues_id_for_inserting = [sh_iss.id for sh_iss in issues if sh_iss.id not in existed_issues_with_statuses]
-        issues_id_for_updating = [sh_iss.id for sh_iss in issues if sh_iss.id in existed_issues_with_statuses and sh_iss.state != existed_issues_with_statuses[sh_iss.id]]
+        issues_id_for_inserting = list(set([sh_iss.id for sh_iss in issues if sh_iss.id not in existed_issues_with_statuses]))
+        issues_id_for_updating = list(set([sh_iss.id for sh_iss in issues if sh_iss.id in existed_issues_with_statuses and sh_iss.state != existed_issues_with_statuses[sh_iss.id]]))
     else:
         existed_issues_with_statuses = await issues_service.get_last_statuses_by_id(uow, issues_id)
-        issues_id_for_inserting = [iss_id for iss_id in issues_id if iss_id not in existed_issues_with_statuses]
-        issues_id_for_updating = [iss_id for iss_id in issues_id if iss_id in existed_issues_with_statuses]
+        issues_id_for_inserting = list(set([iss_id for iss_id in issues_id if iss_id not in existed_issues_with_statuses]))
+        issues_id_for_updating = list(set([iss_id for iss_id in issues_id if iss_id in existed_issues_with_statuses]))
     
 
     logger.info(f"For insert: {len(issues_id_for_inserting)}, for update: {len(issues_id_for_updating)}")
