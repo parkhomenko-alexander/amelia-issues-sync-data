@@ -113,7 +113,7 @@ class AmeliaApiAsync():
                         continue
                     elif st_code == 404:
                         logger.error(f"Some error: status code is {st_code}, text: {response.text}")
-                        return None
+                        return response
                     flag = False
                 except TimeoutException:
                     logger.exception("Timeout error. Retrying...")
@@ -146,7 +146,7 @@ class AmeliaApiAsync():
                         continue
                     elif st_code == 404:
                         logger.error(f"Some error: status code is {st_code}, text: {response.text}")
-                        return None
+                        return response
                     flag = False
                 except TimeoutException as e:
                     logger.exception("Time out error", e)

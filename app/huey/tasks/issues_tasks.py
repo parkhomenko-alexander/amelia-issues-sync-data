@@ -100,6 +100,8 @@ async def sync_new_issues(issues_id: list[int], delay: float = config.API_CALLS_
     issues_for_inserting: list[IssuePostSchema] = []
     for iss_id in issues_id:
         response = await amelia_api.get(APIRoutes.ISSUE + "/" +str(iss_id))
+        if response and response.status_code == 404:
+            continue
         if not response: 
             logger.error(f"Issue {iss_id} request error")
             return []
@@ -128,6 +130,8 @@ async def sync_existed_issues(issues_id: list[int], delay: float = config.API_CA
 
     for iss_id in issues_id:
         response = await amelia_api.get(APIRoutes.ISSUE + "/" +str(iss_id))
+        if response and response.status_code == 404:
+            continue
         if not response: 
             logger.error(f"Issue {iss_id} request error")
             return []
