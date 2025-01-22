@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from enum import Enum
 from time import sleep
 from typing import Any, TypedDict
@@ -361,8 +361,9 @@ class AmeliaApiAsync():
         def check_time_range(self, time_range: list[str]) -> list[str]:
             try:
                 if time_range == []:
-                    start_date = date.today().strftime("%Y-%m-%dT%H:%M:%S")
-                    end_date = (date.today() + timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%S")
+             
+                    start_date = date.today().strftime("%Y-%m-%dT%H:%M:%S") + "+10:00"
+                    end_date = (date.today() + timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%S") + "+10:00"
                     return [start_date, end_date]
                 
                 return time_range
