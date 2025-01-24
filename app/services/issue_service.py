@@ -215,7 +215,6 @@ class IssueService():
                 case _:
                     statuses = filters.transition.statuses
 
-            page = filters.pagination.ofset
             total_count: int = await self.uow.issues_repo.get_filtered_and(facility_id=2)
             filtered_count: int | None = await self.uow.issues_repo.get_count_issues_with_filters_for_report_ver2(
                 filters.creation.start_date,
@@ -229,6 +228,7 @@ class IssueService():
                 filters.place.rooms_id,
                 filters.priorities_id,
                 filters.urgency,
+                filters.current_statuses
             )
 
             iss_ids = await self.uow.issues_repo.get_issue_ids_with_filters_for_report_ver2(
@@ -246,13 +246,22 @@ class IssueService():
                 filters.urgency,
 
                 filters.pagination.limit,
-                filters.pagination.ofset
+                filters.pagination.ofset,
+                filters.current_statuses
             )
             issues: list[FilteredIssue] = []
             current_time = datetime.now()
+            
             iss_ids = sorted(iss_ids, reverse=True)
-            chunk = (iss_ids[0], iss_ids[-1])
-            rows = await self.uow.issues_repo.get_filtered_issues_for_report_ver2(chunk)
+            if iss_ids == [] :
+                res = FilteredIssuesGetSchema(
+                    filtered_count=filtered_count or 0,
+                    total_count=total_count,
+                    issues=issues
+                )
+                return res
+            
+            rows = await self.uow.issues_repo.get_filtered_issues_for_report_ver2(iss_ids)
             for row in reversed(rows):
                 if row.last_status == "исполнена":
                     end_date = row.last_status_created
@@ -320,10 +329,11 @@ class IssueService():
         work_categories = await self.uow.work_categories_repo.get_all()
         priorities = await self.uow.priority_repo.get_all()
         statuses = await self.uow.statuses_history_repo.get_unique_statuses()
-
+        services = [ThinDict(id=e.external_id, title=e.title) for e in services]
+        services = [service for service in services if service.id not in [20, 21, 22]]
         return IssueFilters(
             buildings=[ThinDict(id=e.id, title=e.title) for e in buildings],
-            services=[ThinDict(id=e.external_id, title=e.title) for e in services],
+            services=services,
             work_categories=[WorkCat(id=e.id, title=e.title, service_id=e.service_id) for e in work_categories],
             priorities=[ThinDict(id=e.id, title=e.title) for e in priorities],
             statuses=statuses

@@ -43,6 +43,9 @@ def  filters_dep(
     pagination_ofset: int = Query(
         0, example=0, alias="paginationOfset"
     ),
+    current_statuses: list[str] = Query(
+        [], example=["взята в работу", "новая"], alias="currentStatuses"
+    ),
 ):
     return IssuesFiltersSchema(
          transition=TransitionStatuses(
@@ -66,7 +69,8 @@ def  filters_dep(
         pagination=Pagination(
             limit=pagination_limit,
             ofset=pagination_ofset
-        )
+        ),
+        current_statuses=current_statuses
     )
 
 FiltersDep = Annotated[

@@ -29,9 +29,9 @@ class ReportService:
         second_part_end = 2 * third + (1 if remainder > 1 else 0)
 
         # Split the list into three parts
-        part1 = tuple(ids[:first_part_end])
-        part2 = tuple(ids[first_part_end:second_part_end])
-        part3 = tuple(ids[second_part_end:])
+        part1 = ids[:first_part_end]
+        part2 = ids[first_part_end:second_part_end]
+        part3 = ids[second_part_end:]
 
         return part1, part2, part3
 
@@ -82,12 +82,16 @@ class ReportService:
                 filters.priorities_id,
                 filters.urgency,
                 limit = 1000000,
-                page = 0
+                page = 0,
+                current_statuses=filters.current_statuses
             )
             ids = sorted(ids, reverse=True)
             if ids != []:
-
-                chunks = self.split_list_into_three_parts(ids)
+                
+                if len(ids) > 50000:
+                    chunks = self.split_list_into_three_parts(ids)
+                else:
+                    chunks = [ids]
 
                 for chunk in chunks:
                     rows: Sequence[Row] = await self.uow.issues_repo.get_filtered_issues_for_report_ver2(

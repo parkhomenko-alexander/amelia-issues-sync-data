@@ -187,6 +187,10 @@ class IssuesFiltersSchema(BaseUserModel):
     pagination: Pagination = Field(
         default_factory=pagination_factory
     )
+    current_statuses: list = Field(
+        default_factory=list,
+        examples=[["новая", "принята"]],
+    )
     # fields_in_report: list[str]
     
 class FilteredIssue(BaseUserModel):

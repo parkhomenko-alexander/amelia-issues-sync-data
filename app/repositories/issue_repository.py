@@ -1,4 +1,5 @@
 from datetime import datetime
+from functools import lru_cache
 from typing import Sequence
 
 from sqlalchemy import (CTE, BinaryExpression, ColumnElement, Result, Row,
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import Building, Company
 from app.db.models import issue
+from app.db.models import status_history
 from app.db.models.issue import Issue
 from app.db.models.priority import Priority
 from app.db.models.room import Room
@@ -231,6 +233,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         urgencies: list[str]=[],
         limit: int=0,
         page: int=0,
+        current_statuses: list[str] = []
     ) -> Sequence[int]:
         
         conditions: list[ColumnElement] = self.prepare_conditions(buildings_id, services_id, works_category_id, rooms_id, priorities_id,
@@ -275,38 +278,73 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         # res3: Sequence[Row] = query_res.all()
 
         #! отфильтрованные по дате создания
-        issues_created_cte: Subquery = (
+        issues_created_cte: CTE = (
             select(
                 StatusHistory.issue_id,
                 func.min(StatusHistory.external_id).label("min_external_status_id"),
                 func.timezone("UTC-10", func.min(StatusHistory.created_at)).label("min_created_at")
             )
             .group_by(StatusHistory.issue_id)
-            .subquery()
+            .cte()
         )
 
         # query_res: Result = await self.async_session.execute(select(issues_created_cte))
         # res4: Sequence[Row] = query_res.all()
 
-        issues_created_filtered_by_time_range_cte: Subquery = (
+        issues_created_filtered_by_time_range_cte = (
             select(
                 issues_created_cte.c.issue_id,
-                issues_created_cte.c.min_external_status_id,
             )
             .where(
-                issues_created_cte.c.min_created_at.between(start_date, end_date)
+                between(
+                    issues_created_cte.c.min_created_at,
+                    start_date,
+                    end_date
+                )
             )
-            .subquery()
+            .alias("issues_created_filtered_by_time_range_cte")
         )
         # query_res: Result = await self.async_session.execute(select(issues_created_filtered_by_time_range_cte))
         # res5: Sequence[Row] = query_res.all()
+
+        last_status_id_for_filtered_issues = (
+            select(
+                issues_created_filtered_by_time_range_cte.c.issue_id,
+                func.max(StatusHistory.external_id).label("latest_status_id")
+            )
+            .join(issues_created_filtered_by_time_range_cte, StatusHistory.issue_id == issues_created_filtered_by_time_range_cte.c.issue_id)
+            .group_by(issues_created_filtered_by_time_range_cte.c.issue_id)
+            .alias("last_status_id_for_filtered_issues")
+        )
+
+        # query_res: Result = await self.async_session.execute(select(last_status_id_for_filtered_issues))
+        # res5: Sequence[Row] = query_res.all()
+
+
+        filtered_issues_id_by_current_statuses = (
+            select(
+                last_status_id_for_filtered_issues.c.issue_id,
+                StatusHistory.status
+            )
+            .join(StatusHistory, last_status_id_for_filtered_issues.c.latest_status_id == StatusHistory.external_id)
+        )
+
+        if current_statuses != []:
+            filtered_issues_id_by_current_statuses = filtered_issues_id_by_current_statuses.where(
+                StatusHistory.status.in_(current_statuses)
+            )
+        filtered_issues_id_by_current_statuses = filtered_issues_id_by_current_statuses.alias("filtered_issues_id_by_current_statuses")
+
+        # query_res: Result = await self.async_session.execute(select(filtered_issues_id_by_current_statuses))
+        # res7: Sequence[Row] = query_res.all()
+
 
         # ! итоговые id с которыми будет работа
         join_transition_with_cretion_at_time_cte: Select = (
             select(
                 filter_trinsition_issues_cte.c.issue_id,
             )
-            .join(issues_created_filtered_by_time_range_cte, filter_trinsition_issues_cte.c.issue_id == issues_created_filtered_by_time_range_cte.c.issue_id)
+            .join(filtered_issues_id_by_current_statuses, filter_trinsition_issues_cte.c.issue_id == filtered_issues_id_by_current_statuses.c.issue_id)
             .order_by(filter_trinsition_issues_cte.c.issue_id.desc())
             .limit(limit)
             .offset(limit*page)
@@ -316,7 +354,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         res6:  Sequence[int] = query_res.scalars().all()
         return res6 
 
-    async def get_filtered_issues_for_report_ver2(self, chunk: tuple[int, int]):
+    async def get_filtered_issues_for_report_ver2(self, chunk: list[int]):
         ranked_statuses_for_joined_issues_cte: Subquery = (
             select(
                 StatusHistory.issue_id,
@@ -327,9 +365,8 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
                 ).label("rank")
             )
             .where(
-                StatusHistory.issue_id.between(
-                chunk[-1],
-                chunk[0]
+                StatusHistory.issue_id.in_(
+                chunk
             ))
             .subquery()
         )
@@ -450,7 +487,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
 
         return res 
 
-
+    # @lru_cache(maxsize=30)
     async def get_count_issues_with_filters_for_report_ver2(
     self,
     start_date: datetime,
@@ -464,6 +501,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
     rooms_id: list[int]=[],
     priorities_id: list[int]=[],
     urgencies: list[str]=[],
+    current_statuses: list[str]=[],
 ) -> int | None:
     
         conditions: list[ColumnElement] = self.prepare_conditions(buildings_id, services_id, works_category_id, rooms_id, priorities_id,
@@ -515,18 +553,15 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
                 func.timezone("UTC-10", func.min(StatusHistory.created_at)).label("min_created_at")
             )
             .group_by(StatusHistory.issue_id)
-
             .cte()
         )
 
         # query_res: Result = await self.async_session.execute(select(issues_created_cte))
         # res4: Sequence[Row] = query_res.all()
 
-        issues_created_filtered_by_time_range_cte: CTE = (
+        issues_created_filtered_by_time_range_cte = (
             select(
                 issues_created_cte.c.issue_id,
-                issues_created_cte.c.min_external_status_id,
-                issues_created_cte.c.min_created_at
             )
             .where(
                 between(
@@ -535,22 +570,52 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
                     end_date
                 )
             )
-            .order_by(issues_created_cte.c.issue_id)
-            .cte()
+            .alias("issues_created_filtered_by_time_range_cte")
         )
         # query_res: Result = await self.async_session.execute(select(issues_created_filtered_by_time_range_cte))
         # res5: Sequence[Row] = query_res.all()
 
+        last_status_id_for_filtered_issues = (
+            select(
+                issues_created_filtered_by_time_range_cte.c.issue_id,
+                func.max(StatusHistory.external_id).label("latest_status_id")
+            )
+            .join(issues_created_filtered_by_time_range_cte, StatusHistory.issue_id == issues_created_filtered_by_time_range_cte.c.issue_id)
+            .group_by(issues_created_filtered_by_time_range_cte.c.issue_id)
+            .alias("last_status_id_for_filtered_issues")
+        )
+
+        # query_res: Result = await self.async_session.execute(select(last_status_id_for_filtered_issues))
+        # res5: Sequence[Row] = query_res.all()
+
+
+        filtered_issues_id_by_current_statuses = (
+            select(
+                last_status_id_for_filtered_issues.c.issue_id,
+                StatusHistory.status
+            )
+            .join(StatusHistory, last_status_id_for_filtered_issues.c.latest_status_id == StatusHistory.external_id)
+        )
+
+        if current_statuses != []:
+            filtered_issues_id_by_current_statuses = filtered_issues_id_by_current_statuses.where(
+                StatusHistory.status.in_(current_statuses)
+            )
+        filtered_issues_id_by_current_statuses = filtered_issues_id_by_current_statuses.alias("filtered_issues_id_by_current_statuses")
+
+        # query_res: Result = await self.async_session.execute(select(filtered_issues_id_by_current_statuses))
+        # res7: Sequence[Row] = query_res.all()
+
+
         # ! итоговые id с которыми будет работа
-        join_transition_with_cretion_at_time_cte: CTE = (
+        join_transition_with_cretion_at_time_cte = (
             select(
                 func.count(filter_trinsition_issues_cte.c.issue_id),
             )
-            .join(issues_created_filtered_by_time_range_cte, filter_trinsition_issues_cte.c.issue_id == issues_created_filtered_by_time_range_cte.c.issue_id)
-            .cte()
+            .join(filtered_issues_id_by_current_statuses, filter_trinsition_issues_cte.c.issue_id == filtered_issues_id_by_current_statuses.c.issue_id)
         )
 
-        query_res: Result = await self.async_session.execute(select(join_transition_with_cretion_at_time_cte))
+        query_res: Result = await self.async_session.execute(join_transition_with_cretion_at_time_cte)
         res6 = query_res.scalar()
         
         return res6
