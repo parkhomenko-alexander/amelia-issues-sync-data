@@ -20,20 +20,10 @@ class ReportService:
         self.redis_manager = redis_manager
 
 
-    def split_list_into_three_parts(self, ids):
-        third = len(ids) // 3  # Integer division to get one third of the list length
-        remainder = len(ids) % 3  # Check if there is a remainder
+    def split_list_into_chunks(self, ids, chunk_size=10):
+        chunks = [ids[i:i + chunk_size] for i in range(0, len(ids), chunk_size)]
+        return chunks
 
-        # Calculate the split indices
-        first_part_end = third + (1 if remainder > 0 else 0)
-        second_part_end = 2 * third + (1 if remainder > 1 else 0)
-
-        # Split the list into three parts
-        part1 = ids[:first_part_end]
-        part2 = ids[first_part_end:second_part_end]
-        part3 = ids[second_part_end:]
-
-        return part1, part2, part3
 
     @with_uow
     async def generate_issues_report_ver2(
@@ -89,7 +79,7 @@ class ReportService:
             if ids != []:
                 
                 if len(ids) > 50000:
-                    chunks = self.split_list_into_three_parts(ids)
+                    chunks = self.split_list_into_chunks(ids, chunk_size=10000)
                 else:
                     chunks = [ids]
 

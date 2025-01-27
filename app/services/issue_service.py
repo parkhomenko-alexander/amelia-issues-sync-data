@@ -313,7 +313,7 @@ class IssueService():
             logger.error(e)
             logger.error(traceback.format_exc())
             return None
-        
+
     @with_uow
     async def get_count(
         self,
