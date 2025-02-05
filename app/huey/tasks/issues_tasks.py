@@ -173,7 +173,6 @@ async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = []
         existed_issues_with_statuses = await issues_service.get_last_statuses_by_id(uow, issues_id)
         issues_id_for_inserting = list(set([iss_id for iss_id in issues_id if iss_id not in existed_issues_with_statuses]))
         issues_id_for_updating = list(set([iss_id for iss_id in issues_id if iss_id in existed_issues_with_statuses]))
-    
 
     logger.info(f"For insert: {len(issues_id_for_inserting)}, for update: {len(issues_id_for_updating)}")
     
