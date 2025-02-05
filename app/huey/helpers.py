@@ -8,6 +8,7 @@ from typing import Any, Generic, Type, TypeVar
 from pydantic import BaseModel
 from httpx import Response
 
+from app.schemas.general import BaseUserModel, GeneralSchema
 from app.schemas.tech_passport_schemas import TechPassportPostSchema
 from app.services.building_service import BuildingService
 from app.services.company_service import CompanyService
@@ -33,25 +34,26 @@ def run_async_task(func):
 
 
 
-T = TypeVar('T', bound=BaseModel)
+TypeVarPydanticModels = TypeVar('TypeVarPydanticModels', bound=BaseModel)
+# TypeVarPydanticModels = TypeVar('TypeVarPydanticModels', bound=BaseModel)
 
-class ReturnTypeFromJsonQuery(BaseModel, Generic[T]):
-    data: list[T]
+class ReturnTypeFromJsonQuery(BaseModel, Generic[TypeVarPydanticModels]):
+    data: list[TypeVarPydanticModels]
     count: int
 
-class ReturnTypePathParams(BaseModel, Generic[T]):
-    data: list[T]
+class ReturnTypePathParams(BaseModel, Generic[TypeVarPydanticModels]):
+    data: list[TypeVarPydanticModels]
 
 class DynamicIssuesCount(BaseModel):
     total: int
     filtered: int
 
-class ShortIssue(BaseModel, Generic[T]):
+class ShortIssue(BaseModel, Generic[TypeVarPydanticModels]):
     id: int
     state: str
 
-class DynamicIssuesResponse(BaseModel, Generic[T]):
-    data: list[T]
+class DynamicIssuesResponse(BaseModel, Generic[TypeVarPydanticModels]):
+    data: list[TypeVarPydanticModels]
     count: DynamicIssuesCount
 
     def page_count(self, per_page) -> int:
@@ -60,14 +62,14 @@ class DynamicIssuesResponse(BaseModel, Generic[T]):
         return self.count.filtered // per_page + 2
 
 
-def handle_response_of_json_query(response: Response, model: Type[T]) -> ReturnTypeFromJsonQuery[T]:
+def handle_response_of_json_query(response: Response, model: Type[TypeVarPydanticModels]) -> ReturnTypeFromJsonQuery[TypeVarPydanticModels]:
     """
         Handling request status and return data
     """
     return ReturnTypeFromJsonQuery[model](**response.json())
 
 
-def handle_response_of_path_params(response: Response, model: Type[T]) -> ReturnTypePathParams[T]:
+def handle_response_of_path_params(response: Response, model: Type[TypeVarPydanticModels]) -> ReturnTypePathParams[TypeVarPydanticModels]:
     """
         Handling request status and return data
     """

@@ -10,7 +10,8 @@ from httpx import Response, TimeoutException, TimeoutException, ConnectError
 import httpx
 from loguru import logger
 
-from app.celery.helpers import ReturnTypeFromJsonQuery
+from app.huey.helpers import ReturnTypeFromJsonQuery
+from app.huey.helpers import TypeVarPydanticModels
 from config import config
 
 
@@ -350,7 +351,7 @@ class AmeliaApiAsync():
         def get_pagination(self) -> Pagination:
             return self.pagination
 
-        def get_count_of_pages(self, data: ReturnTypeFromJsonQuery):
+        def get_count_of_pages(self, data: ReturnTypeFromJsonQuery[TypeVarPydanticModels]):
             count_objects: int = data.count
 
             if count_objects == 0:
