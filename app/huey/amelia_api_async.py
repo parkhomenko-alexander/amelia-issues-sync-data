@@ -317,10 +317,11 @@ class AmeliaApiAsync():
                 ],
                 "filters[transition_date[from]]": kwargs["start_date"],
                 "filters[transition_date[to]]": kwargs["end_date"],
+                "request_user_id": config.API_USER_ID
             }
 
             return params
-        
+
         async def auth(self) -> int:
             flag = True
             while flag:

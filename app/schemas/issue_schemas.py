@@ -4,10 +4,10 @@ from typing import Literal
 
 from pydantic import Field, field_validator, validator
 
-from app.schemas.general import BaseUserModel, GeneralSchema
+from app.schemas.general import BaseUserModel, GeneralAmeliaSchema
 
 
-class IssuePostSchema(GeneralSchema):
+class IssuePostSchema(GeneralAmeliaSchema):
     description: str | None = Field(None)
     finish_date_plane: datetime | None = Field(validation_alias="finish_date_plane")
     dead_line: datetime | None = Field(validation_alias="dead_line")

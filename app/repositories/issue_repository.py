@@ -2,7 +2,7 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Sequence
 
-from sqlalchemy import (CTE, BinaryExpression, ColumnElement, Result, Row,
+from sqlalchemy import (CTE, ColumnElement, Result, Row,
                         Select, Subquery, and_, between, desc, func, select)
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,8 +22,8 @@ from app.repositories.abstract_repository import SQLAlchemyRepository
 class IssueRepository(SQLAlchemyRepository[Issue]):
     def __init__(self, async_session: AsyncSession):
         super().__init__(async_session, Issue)
-    
-    
+
+
     async def get_all_external_ids_with_included_statuses(self, service_id: int, statuses: list[str]) -> Sequence[int]:
         last_statuses_ids: CTE = (
             select(

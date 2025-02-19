@@ -4,7 +4,7 @@ from sqlalchemy import ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base_model import Base, str_350
+from app.db.base_model import Base, BaseMixinAmelia, str_350
 
 if TYPE_CHECKING:
     from app.db.models.company import Company
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 
-class User(Base):
+class User(Base, BaseMixinAmelia):
     __tablename__ = "users"
 
     first_name: Mapped[str_350 | None]

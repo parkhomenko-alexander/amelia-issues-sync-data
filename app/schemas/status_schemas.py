@@ -1,9 +1,9 @@
 from datetime import datetime
 from pydantic import Field
-from app.schemas.general import GeneralSchema
+from app.schemas.general import GeneralAmeliaSchema
 
 
-class StatusPostSchema(GeneralSchema):
+class StatusPostSchema(GeneralAmeliaSchema):
     title: str
     workflow_id: int = Field(validation_alias="workflow_id")
     is_started: bool = Field(False, validation_alias="started")
@@ -11,7 +11,7 @@ class StatusPostSchema(GeneralSchema):
     is_accepted: bool = Field(False, validation_alias="accepted")
     percentage_completion: int = Field(validation_alias="percentage_completion")
 
-class HistoryStatusRecord(GeneralSchema):
+class HistoryStatusRecord(GeneralAmeliaSchema):
     message: str
     status: str
     percentage: int 

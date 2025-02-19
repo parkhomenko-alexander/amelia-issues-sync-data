@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base_model import Base, str_350
+from app.db.base_model import Base, BaseMixinAmelia, str_350
 from app.db.models.user import User
 
 if TYPE_CHECKING:
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 
-class StatusHistory(Base):
+class StatusHistory(Base, BaseMixinAmelia):
     __tablename__ = "statuses_history"
 
     issue_id: Mapped[int] = mapped_column(ForeignKey("issues.external_id", ondelete="CASCADE"))

@@ -2,10 +2,10 @@ from typing import Dict
 
 from pydantic import BaseModel, Field
 
-from app.schemas.general import GeneralSchema
+from app.schemas.general import GeneralAmeliaSchema
 
 
-class RoomPostSchema(GeneralSchema):
+class RoomPostSchema(GeneralAmeliaSchema):
     title: str
 
     facility_id: int | None = Field(None, validation_alias="facility_id")

@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
-from app.db.base_model import Base, str_350
+from app.db.base_model import Base, BaseMixinAmelia, str_350
 
 if TYPE_CHECKING:
     from app.db.models.issue import Issue
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from app.db.models.facility import Facility
 
 
-class Building(Base):
+class Building(Base, BaseMixinAmelia):
     __tablename__ = "buildings"
 
     title: Mapped[str_350]
@@ -20,7 +20,7 @@ class Building(Base):
     latitude: Mapped[float | None]
     longitude: Mapped[float | None]
     facility_id: Mapped[int] = mapped_column(ForeignKey("facilities.id"))
-    
+
 
     floors: Mapped[list["Floor"] | None] = relationship(back_populates="building", uselist=True)
     rooms: Mapped[list["Room"] | None] = relationship(back_populates="building", uselist=True)

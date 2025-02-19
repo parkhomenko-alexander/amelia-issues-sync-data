@@ -12,3 +12,8 @@ from app.repositories.user_repository import UserRepository
 from app.repositories.work_category_repository import WorkCategoryRepository
 from app.repositories.workflow_repository import WorkflowRepository
 from app.repositories.tech_possport_repository import TechPassportRepository
+
+from app.repositories.system_user_repository import SystemUserRepository
+from app.repositories.permissions.permission_repository import PermissionRepository
+from app.repositories.permissions.role_permission_repository import RolePermissionRepository
+from app.repositories.permissions.roles_repository import RoleRepository

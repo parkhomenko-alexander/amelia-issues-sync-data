@@ -2,12 +2,12 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
-from app.db.base_model import Base, str_350
+from app.db.base_model import Base, BaseMixinAmelia, str_350
 
 if TYPE_CHECKING:
     ...
 
-class TechPassport(Base):
+class TechPassport(Base, BaseMixinAmelia):
     __tablename__ = "tech_passports"
 
     title: Mapped[str_350]

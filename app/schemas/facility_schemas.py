@@ -1,7 +1,7 @@
-from app.schemas.general import GeneralSchema
+from app.schemas.general import GeneralAmeliaSchema
 
 
-class FacilityPostSchema(GeneralSchema):
+class FacilityPostSchema(GeneralAmeliaSchema):
     title: str
 
 class Facilities(FacilityPostSchema):

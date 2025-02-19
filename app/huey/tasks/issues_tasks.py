@@ -116,7 +116,7 @@ async def sync_issues(issues_id: list[int], delay: float = config.API_CALLS_DELA
 
     return issues_for_inserting
 
-@huey.task()
+# @huey.task()
 @run_async_task
 async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
     start  = datetime.now()

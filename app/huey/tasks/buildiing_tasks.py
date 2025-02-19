@@ -22,7 +22,6 @@ from app.huey.helpers import (ReturnTypeFromJsonQuery,
                                 handle_response_of_json_query)
 
 
-from httpx import Response
 
 
 @huey.task()
