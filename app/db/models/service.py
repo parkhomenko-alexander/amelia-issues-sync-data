@@ -2,16 +2,16 @@ from typing import TYPE_CHECKING, Optional
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
-from app.db.base_model import Base, str_350
+from app.db.base_model import Base, BaseMixinAmelia, str_350
 
 if TYPE_CHECKING:
     from app.db.models.status_history import StatusHistory
     from .work_category import WorkCategory
     from app.db.models.issue import Issue
-    from app.db.models.issue import Facility
+    from app.db.models.facility import Facility
 
 
-class Service(Base):
+class Service(Base, BaseMixinAmelia):
     __tablename__ = "services"
 
     title: Mapped[str_350]

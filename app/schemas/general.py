@@ -12,9 +12,11 @@ class BaseUserModel(BaseModel):
         populate_by_name=True,
     )
 
-class GeneralSchema(BaseUserModel):
 
+class GeneralAmeliaSchema(BaseUserModel):
     created_at: datetime | None = Field(None, validation_alias="created_at")
     updated_at: datetime | None = Field(None, validation_alias="updated_at")
     external_id: int = Field(alias="id") #ОСОБЕННОСТИ СУЩНОСТЕЙ КОТОРЫЕ Я СОЗДАЮ САМ
 
+class GeneralSchema(BaseUserModel):
+    ...

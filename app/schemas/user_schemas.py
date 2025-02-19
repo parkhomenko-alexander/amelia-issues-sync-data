@@ -1,8 +1,8 @@
 from pydantic import Field
-from app.schemas.general import GeneralSchema
+from app.schemas.general import GeneralAmeliaSchema
 
 
-class UserPostSchema(GeneralSchema):
+class UserPostSchema(GeneralAmeliaSchema):
 
     first_name: str | None = Field(None, validation_alias="fname")
     middle_name: str | None = Field(None, validation_alias="mname")

@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Type
 
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +11,10 @@ from app.repositories import (BuildingRepository, CompanyRepository,
                               StatusHistoryRepository, StatusRepository,
                               TechPassportRepository, UserRepository,
                               WorkCategoryRepository, WorkflowRepository)
+from app.repositories.permissions.permission_repository import PermissionRepository
+from app.repositories.permissions.role_permission_repository import RolePermissionRepository
+from app.repositories.permissions.roles_repository import RoleRepository
+from app.repositories.system_user_repository import SystemUserRepository
 
 
 class AbstractUnitOfWork(ABC):
@@ -30,11 +33,17 @@ class AbstractUnitOfWork(ABC):
     workflow_repo: WorkflowRepository
     tech_passport_repo: TechPassportRepository
 
+    system_user_repo: SystemUserRepository
+    role_repo: RoleRepository
+    permission_repo: PermissionRepository
+    role_permission_repo: RolePermissionRepository
+
+
 
     @abstractmethod
     def __init__(self, *args):
         raise NotImplementedError
-    
+
     @abstractmethod
     async def __aenter__(self):
         raise NotImplementedError
@@ -59,7 +68,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 
     async def __aenter__(self):
         self.async_session: AsyncSession = self.async_session_factory()
-        
+
         self.service_repo = ServiceRepository(self.async_session)
         self.buildings_repo = BuildingRepository(self.async_session)
         self.company_repo = CompanyRepository(self.async_session)
@@ -73,7 +82,13 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
         self.users_repo = UserRepository(self.async_session)
         self.work_categories_repo = WorkCategoryRepository(self.async_session)
         self.workflow_repo = WorkflowRepository(self.async_session)
-        self.tech_passport_repo = TechPassportRepository(self.async_session)        
+        self.tech_passport_repo = TechPassportRepository(self.async_session)
+
+        self.system_user_repo = SystemUserRepository(self.async_session)
+        self.role_repo = RoleRepository(self.async_session)
+        self.permission_repo = PermissionRepository(self.async_session)
+        self.role_permission_repo = RolePermissionRepository(self.async_session)
+
 
     async def __aexit__(self, *args):
         await self.rollback()

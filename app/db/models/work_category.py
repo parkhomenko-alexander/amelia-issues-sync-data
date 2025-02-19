@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Optional
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base_model import Base, str_350
+from app.db.base_model import Base, BaseMixinAmelia, str_350
 
 if TYPE_CHECKING:
     from app.db.models.status_history import StatusHistory
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from app.db.models.facility import Facility
 
     
-class WorkCategory(Base):
+class WorkCategory(Base, BaseMixinAmelia):
     __tablename__ = "work_categories"
 
     title: Mapped[str_350]

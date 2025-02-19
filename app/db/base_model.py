@@ -1,7 +1,6 @@
-from datetime import datetime, tzinfo
+from datetime import datetime, timezone
 from typing import TypeVar
 from typing_extensions import Annotated
-from pytz import timezone
 from sqlalchemy import DateTime, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, registry
 
@@ -18,8 +17,16 @@ class Base(DeclarativeBase):
     )
 
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=True)
-    updated_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    external_id: Mapped[int] = mapped_column(unique=True)
+    # id: Mapped[int] = mapped_column(primary_key=True)
+    # created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=True)
+    # updated_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # external_id: Mapped[int] = mapped_column(unique=True)
+
+class BaseMixin:
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=datetime.now(timezone.utc))
+
+class BaseMixinAmelia(BaseMixin):
+    external_id: Mapped[int] = mapped_column(unique=True)

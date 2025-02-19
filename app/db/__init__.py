@@ -14,3 +14,8 @@ from app.db.models.user import User
 from app.db.models.work_category import WorkCategory
 from app.db.models.workflow import Workflow
 from app.db.models.tech_passport import TechPassport
+
+from app.db.models.system_user import SystemUser
+from app.db.models.role import Role
+from app.db.models.permission import Permission
+from app.db.models.role_permission import RolePermission

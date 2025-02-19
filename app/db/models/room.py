@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Optional
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base_model import Base, str_350
+from app.db.base_model import Base, BaseMixinAmelia, str_350
 
 if TYPE_CHECKING:
     from app.db.models.building import Building
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 
-class Room(Base):
+class Room(Base, BaseMixinAmelia):
     __tablename__ = "rooms"
 
     title: Mapped[str_350]

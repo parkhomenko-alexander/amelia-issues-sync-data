@@ -32,8 +32,8 @@ class APIRoutes:
     ISSUES_STATUSES_WITH_QUERY = "/issue_histories?"
     CURRENT_ISSUES_WITH_QUERY = "/issues"
     TECH_PASSPORT_WITH_ID = "/rooms/form_data?id="
-    
-    DYNAMIC_ISSUES = "/dynamic/issues?"
+
+    DYNAMIC_ISSUES = "/dynamic/issues"
     ISSUE = "/issues"
 
 
@@ -56,6 +56,8 @@ class APIGrids(Enum):
     ISSUES_STATUSES = "history"
     CURRENT_ISSUES = "issues"
     DYNAMIC_ISSUES = "dynamic_issues"
+    DYNAMIC_ISSUES_CART_INFORMATION = "dynamic_issues_cart_information"
+    DYNAMIC_ISSUES_CART_HISTORY = "dynamic_issues_cart_history"
 
 
 
@@ -91,12 +93,29 @@ class AmeliaApiAsync():
             """
             Encodes the parameters to make sure array-like parameters are properly formatted.
             """
-            # Ensure the lists are encoded as comma-separated values
             for key, value in params.items():
                 if isinstance(value, list):
                     params[key] = ','.join(map(str, value))
             return urlencode(params)
-        
+
+        # def encode_params(self, params: dict):
+        #     """
+        #     Encodes the parameters to make sure array-like parameters are properly formatted.
+        #     """
+        #     encoded_params = []
+
+        #     for key, value in params.items():
+        #         if isinstance(value, list):
+        #             # Handle lists by appending each element as a separate key-value pair
+        #             for item in value:
+        #                 encoded_params.append((f"{key}", item))
+        #         else:
+        #             # Handle non-list values normally
+        #             encoded_params.append((key, value))
+
+        #     # Convert the list of tuples into a URL-encoded query string
+        #     return urlencode(encoded_params, doseq=True)
+
         async def get(self, route: str, params: str = "") -> Response | None:
             flag = True
             response = None
@@ -301,25 +320,38 @@ class AmeliaApiAsync():
 
             return data
 
-        def generate_query_params_issues(self, page: int, **kwargs):
+        def generate_query_params_issues(self, **kwargs):
+            path = kwargs["path"]
+            params = {}
             
-            params = {
-                "page": page,
-                "sort_by": "id",
-                "descending": True,
-                "facility_id": 2,
-                # "query":"",
-                "filters[transition_status_id][]": [
-                    "16,130,179", "33,125,177", "134", "6",
-                    "10,20,124,176", "96,132,180", "9,19,131,185",
-                    "21,128,184", "1,11,127,183", "5,22,126,182",
-                    "4", "2,12,133,175", "8,18,129,178", "7"
-                ],
-                "filters[transition_date[from]]": kwargs["start_date"],
-                "filters[transition_date[to]]": kwargs["end_date"],
-                "request_user_id": config.API_USER_ID
-            }
-
+            if path == APIGrids.DYNAMIC_ISSUES:
+                params = {
+                    "page": kwargs["page"],
+                    "sort_by": "id",
+                    "descending": "true",
+                    "facility_id": 2,
+                    "query":"",
+                    # "filters[transition_status_id][]": [
+                    #     "16,130,179", "33,125,177", "134", "6",
+                    #     "10,20,124,176", "96,132,180", "9,19,131,185",
+                    #     "21,128,184", "1,11,127,183", "5,22,126,182",
+                    #     "4", "2,12,133,175", "8,18,129,178", "7"
+                    # ],
+                    "filters[transition_status_id][]": [
+                        "16,130,179", "33,125,177", "134", "20,124,176",
+                        "96,132,180", "19,131,185", "13", "21,128,184",
+                        "11,127,183", "22,126,182", "14", "12,133,175",
+                        "18,129,178", "17"
+                    ],
+                    "filters[transition_date][from]": kwargs["start_date"],
+                    "filters[transition_date][to]": kwargs["end_date"],
+                    "request_user_id": config.API_USER_ID
+                }
+            if path == APIGrids.DYNAMIC_ISSUES_CART_INFORMATION:
+                params = {
+                    "tab": "issue_information",
+                    "request_user_id": config.API_USER_ID
+                }
             return params
 
         async def auth(self) -> int:

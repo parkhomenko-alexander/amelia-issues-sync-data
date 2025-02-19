@@ -21,6 +21,11 @@ class Config(BaseSettings):
     APPLICATION_LOGGER_COMPRESSION: str = ""
     APPLICATION_LOGGER_SERIALIZE: bool = False
 
+    APPLICATION_SECRET_KEY: str = ""
+    APPLICATION_HASH_ALGORITHM: str = ""
+    APPLICATION_ACCESS_TOKEN_EXPIRE_MINUTES: int = 0
+    APPLICATION_REFRESH_TOKEN_EXPIRE: int = 0
+
     DB_URI: str = ""
     DB_ECHO: bool = False 
 
@@ -34,8 +39,10 @@ class Config(BaseSettings):
     API_BASE_URL: str = ""
     API_USER: str = ""
     API_USER_PASSWORD: str = ""
+    API_USER_ID: str = ""
     API_CALLS_DELAY: float = 3
     API_CALLS_TIMEOUT_DELAY: float = 3
+
 
     model_config = SettingsConfigDict(env_file=DOTENV)
 

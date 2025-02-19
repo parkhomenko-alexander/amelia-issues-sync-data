@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Optional
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base_model import Base, str_350
+from app.db.base_model import Base, BaseMixinAmelia, str_350
 
 if TYPE_CHECKING:
     # from app.db.models.room_tech_passports import RoomTechPassports
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 
-class Company(Base):
+class Company(Base, BaseMixinAmelia):
     __tablename__ = "companies"
 
     full_name: Mapped[str_350]

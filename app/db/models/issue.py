@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base_model import Base, str_350
+from app.db.base_model import Base, BaseMixinAmelia, str_350
 
 if TYPE_CHECKING:
     from app.db.models.building import Building
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 
-class Issue(Base):
+class Issue(Base, BaseMixinAmelia):
     __tablename__ = "issues"
 
     description: Mapped[str]
