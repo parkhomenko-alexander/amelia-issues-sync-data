@@ -35,7 +35,7 @@ from logger import logger
 
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def sync_statuses():
     """
     Get statuses
@@ -81,7 +81,7 @@ async def sync_statuses():
     return msg
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def sync_services():
     """
     Get services
@@ -201,7 +201,7 @@ async def sync_work_categories():
     return
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def sync_archive(delay: float = config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: Borders | None = None, included_statuses: list[str] | None = None):
     """
     Get archive
@@ -355,7 +355,7 @@ async def sync_archive(delay: float = config.API_CALLS_DELAY, service_external_i
     return return_msg
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def sync_current_issues(delay: float = config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: Borders | None = None):
     """
     Get current issues
@@ -528,7 +528,7 @@ async def sync_current_issues(delay: float = config.API_CALLS_DELAY, service_ext
     return return_msg
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def sync_archive_by_pattern(delay: float = config.API_CALLS_DELAY, service_external_ids: list[int] = [], borders: Borders | None = None, included_statuses: list[str] | None = None):
     """
     Get archive
@@ -867,7 +867,7 @@ async def sync_existed_issues(issues_id: list[int], delay: float = config.API_CA
 
 
 # @celery_app.task
-# @async_to_sync
+# @run_async_task
 async def _sync_issues_dynamic(issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
     start  = datetime.now()
     uow = SqlAlchemyUnitOfWork()
