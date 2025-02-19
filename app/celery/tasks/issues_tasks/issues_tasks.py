@@ -13,6 +13,7 @@ from app.celery.helpers import (DynamicIssuesResponse, ReturnTypeFromJsonQuery,
                                 ShortIssue, async_to_sync,
                                 handle_response_of_json_query,
                                 handle_response_of_path_params)
+from app.celery.tasks.issues_tasks.helpers import run_async_task
 from app.schemas.issue_schemas import IssuePostSchema
 from app.schemas.service_schemas import ServicePostSchema
 from app.schemas.status_schemas import HistoryStatusRecord, StatusPostSchema
@@ -139,7 +140,7 @@ async def sync_services():
     return
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def sync_work_categories():
     """
     Get work categories
