@@ -6,6 +6,7 @@ from app.celery.amelia_api_calls import AmeliaApi, APIGrids, APIRoutes
 from app.celery.celery_app import celery_app
 from app.celery.helpers import (ReturnTypeFromJsonQuery, async_to_sync,
                                 handle_response_of_json_query)
+from app.celery.tasks.issues_tasks.helpers import run_async_task
 from app.schemas.company_schemas import CompanyPostSchema
 from app.schemas.facility_schemas import FacilityPostSchema
 from app.schemas.priority_schemas import PriorityPostSchema
@@ -22,7 +23,7 @@ from logger import logger
 
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def sync_ficilities():
     """
         Get facilities
@@ -61,7 +62,7 @@ async def sync_ficilities():
     return msg
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def sync_companies():
     """
         Get companies
@@ -122,7 +123,7 @@ async def sync_companies():
     return
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def sync_priorities():
     """
     Get priorities
@@ -167,7 +168,7 @@ async def sync_priorities():
     return msg
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def sync_workflows():
     """
     Get priorities
@@ -210,7 +211,7 @@ async def sync_workflows():
     return msg
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def sync_users():
     """
     Sync users
@@ -281,7 +282,7 @@ async def sync_users():
 
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def patch_common_users(pages: int = 1, delay: float = config.API_CALLS_DELAY):
     amelia_api: AmeliaApi = AmeliaApi()
     amelia_api.auth()
