@@ -321,7 +321,8 @@ async def patch_common_users(pages: int = 1, delay: float = config.API_CALLS_DEL
                 data = {
                     "user": {
                         "service_id": 19,
-                        "company_id": 2
+                        "company_id": 2,
+                        "send_bypass_token": "false"
                     }
                 }
                 url = f"/{user_id}"

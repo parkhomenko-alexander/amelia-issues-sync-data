@@ -120,7 +120,7 @@ async def sync_issues(issues_id: list[int], delay: float = config.API_CALLS_DELA
 
     return issues_for_inserting
 
-async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
+async def sync_issues_dynamic(pages: None | int = None, issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
     start  = datetime.now()
     uow = SqlAlchemyUnitOfWork()
     amelia_api: AmeliaApiAsync = AmeliaApiAsync()
@@ -146,10 +146,10 @@ async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = []
             logger.error("Dynamic issues response is none.")
             return
         response: DynamicIssuesResponse = DynamicIssuesResponse(**dynamic_iss_response.json())
-        if page is None:
+        if pages is None:
             page_count = response.page_count(amelia_api.pagination["per_page"])
         else:
-            page_count = page
+            page_count = pages
         issues: list[ShortIssue] = []
 
         for i in range(1, page_count):
@@ -199,7 +199,7 @@ async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = []
 
 @celery_app.task
 @run_async_task
-async def call_dynamic_issues(page: None | int = None, issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
+async def call_dynamic_issues(pages: None | int = None, issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
     redis_client = RedisManager()
 
     lock_timeout = 60 * 60 * 5
@@ -207,7 +207,7 @@ async def call_dynamic_issues(page: None | int = None, issues_id: list[int] = []
     if lock_value is None or lock_value == DYNAMIC_ISSUES_TAKS_STATUS_UNLOCKED:
         try:
             await redis_client.set_cache(prefix=CachePrefixes.CELERY_TASK_DYNAMIC_ISSUES, key=LOCK_KEY, val=DYNAMIC_ISSUES_TAKS_STATUS_LOCKED, timeout=lock_timeout)
-            await sync_issues_dynamic(page, issues_id, time_range, delay)
+            await sync_issues_dynamic(pages, issues_id, time_range, delay)
         finally:
             await redis_client.set_cache(prefix=CachePrefixes.CELERY_TASK_DYNAMIC_ISSUES, key=LOCK_KEY, val=DYNAMIC_ISSUES_TAKS_STATUS_UNLOCKED, timeout=lock_timeout)
     else:
