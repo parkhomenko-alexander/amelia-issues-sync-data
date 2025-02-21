@@ -1,8 +1,11 @@
+import json
 from time import sleep
+from urllib import parse
 
 from requests import Response
 
-from app.celery.amelia_api_calls import AmeliaApi, APIGrids, APIRoutes
+from app.celery.amelia_api_async import APIGrids, APIRoutes, AmeliaApiAsync
+from app.celery.amelia_api_calls import AmeliaApi
 from app.celery.celery_app import celery_app
 from app.celery.helpers import (ReturnTypeFromJsonQuery, async_to_sync,
                                 handle_response_of_json_query)
@@ -284,25 +287,27 @@ async def sync_users():
 @celery_app.task
 @run_async_task
 async def patch_common_users(pages: int = 1, delay: float = config.API_CALLS_DELAY):
-    amelia_api: AmeliaApi = AmeliaApi()
-    amelia_api.auth()
+    amelia_api: AmeliaApiAsync = AmeliaApiAsync()
+    await amelia_api.auth()
 
-    params = amelia_api.create_json_for_request(APIGrids.USERS, role="user")
+    params = amelia_api.create_json_for_request(APIGrids.USERS, role=3)
+    encoded = amelia_api.encode_params(params).replace("+", "")
 
-    response: Response | None = amelia_api.get(APIRoutes.USERS_WITH_QUERY, params=params)
+    response = await amelia_api.get(APIRoutes.USERS_WITH_QUERY, params=encoded)
     if response is None:
         msg = "Users response is none"
         logger.error(msg)
         return msg
-    
+
     logger.info("Common users patch")
     users_count = 0
     try:
 
         for i in range(1, pages):
-            params = amelia_api.create_json_for_request(APIGrids.USERS, i, role="user")
+            params = amelia_api.create_json_for_request(APIGrids.USERS, page=i, role=3)
+            encoded = amelia_api.encode_params(params).replace("+", "")
 
-            response = amelia_api.get(APIRoutes.USERS_WITH_QUERY, params=params)
+            response = await amelia_api.get(APIRoutes.USERS_WITH_QUERY, params=encoded)
 
             if response is None:
                 msg = "Common users patch response is none"
@@ -321,12 +326,11 @@ async def patch_common_users(pages: int = 1, delay: float = config.API_CALLS_DEL
                 }
                 url = f"/{user_id}"
 
-                response = amelia_api.patch(APIRoutes.USERS + url, params=data)
+                response = await amelia_api.patch(APIRoutes.USERS + url, params=data)
                 users_count += 1
                 sleep(delay)
                 if users_count % 100 == 0:
                     logger.info(f"{users_count} users patched")
-                    
 
     except Exception as e:
         logger.exception(f"Some error occurred: {e}")

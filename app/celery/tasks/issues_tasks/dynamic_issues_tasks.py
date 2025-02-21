@@ -40,7 +40,7 @@ async def sync_history_statuses(issue_ids: list[int], delay: float = config.API_
                 params = amelia_api.create_json_for_request(APIGrids.ISSUES_STATUSES, page, issue_id=iss_id)
                 params = amelia_api.encode_params(params)
                 response = await amelia_api.get(APIRoutes.ISSUES_STATUSES_WITH_QUERY, params=params)
-            
+
                 if response is None:
                     logger.info("Issues history statuses response is none")
                     return []
@@ -140,7 +140,7 @@ async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = []
         logger.info(f"{tr}")
         url = amelia_api.generate_query_params_issues(path=APIGrids.DYNAMIC_ISSUES, page=1, start_date=tr[0], end_date=tr[1])
         params = amelia_api.encode_params(url)
-        logger.info(APIRoutes.DYNAMIC_ISSUES + params)
+        logger.info(APIRoutes.DYNAMIC_ISSUES + "?" + params)
         dynamic_iss_response = await amelia_api.get(APIRoutes.DYNAMIC_ISSUES + "?" + params)
         if dynamic_iss_response is None:
             logger.error("Dynamic issues response is none.")

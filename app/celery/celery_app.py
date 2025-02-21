@@ -26,6 +26,7 @@ celery_app.conf.beat_schedule = {
     "sync_dynamic_issues": {
         "task": "tasks.issues_tasks.dynamic_issues_tasks.call_dynamic_issues",
         "schedule": crontab(minute="*/20"),
+        "kwargs": {"delay": config.API_CALLS_DELAY, "pages": 600}
     },
     "sync_cache": {
         "task": "tasks.cache_tasks.update_building_cache",

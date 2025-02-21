@@ -1,16 +1,15 @@
 from loguru import logger
 
 from app.celery.celery_app import celery_app
-from app.celery.helpers import async_to_sync
+from app.celery.tasks.issues_tasks.helpers import run_async_task
 from app.schemas.building_schemas import BuildingsForCache
 from app.services.building_service import BuildingService
-from app.services.room_service import RoomService
 from app.utils.redis_manager import CachePrefixes, RedisManager
 from app.utils.unit_of_work import SqlAlchemyUnitOfWork
 
 
 @celery_app.task
-@async_to_sync
+@run_async_task
 async def update_building_cache():
     try:
         uow: SqlAlchemyUnitOfWork = SqlAlchemyUnitOfWork()

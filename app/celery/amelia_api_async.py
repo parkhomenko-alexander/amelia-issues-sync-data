@@ -263,23 +263,23 @@ class AmeliaApiAsync():
             elif grid == APIGrids.USERS:
                 filters = {}
                 role = kwargs["role"]
-                if role:
-                    filters = {
-                        "role": role 
-                    }
+                # if role:
+                #     filters = {
+                #         "role": role 
+                #     }
                 data = {
                     "json" : json.dumps({
-                        "table":{
-                            "sortBy":"id",
+                        "table": {
+                            "sortBy": "id",
                             "descending": True,
-                            "page": page,
-                            "rowsPerPage": 0,
-                            "rowsNumber": 0,
+                            "page":  page,
                             "query": "",
-                            "filters": filters,
-                            "except_filters": {
+                            "filters": {
+                                "role": role 
                             },
-                            "grid": grid.value
+                            "except_filters": {},
+                            "grid": grid.value,
+                            "time_zone":"10"
                         }
                     })
                 }
