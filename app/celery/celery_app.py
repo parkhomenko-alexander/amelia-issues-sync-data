@@ -32,9 +32,9 @@ celery_app.conf.beat_schedule = {
         "task": "tasks.cache_tasks.update_building_cache",
         "schedule": crontab(minute="0", hour="3"),
     },
-    "patch_users": {
-        "task": "tasks.organizations_tasks.patch_common_users",
-        "schedule": crontab(hour='*/2', minute="0"),
-        "kwargs": {"delay": 3, "pages": 4}
-    },
+    # "patch_users": {
+    #     "task": "tasks.organizations_tasks.patch_common_users",
+    #     "schedule": crontab(hour='*/2', minute="0"),
+    #     "kwargs": {"delay": 3, "pages": 4}
+    # },
 }
