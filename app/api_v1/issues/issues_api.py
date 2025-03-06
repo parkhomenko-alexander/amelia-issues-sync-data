@@ -30,7 +30,7 @@ async def get_filtered_issues(
 
 
 @router.get(
-    'get_filters',
+    '/filters',
     response_model=IssueFilters
 )
 async def get_filters(

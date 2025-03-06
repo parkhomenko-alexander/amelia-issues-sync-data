@@ -45,45 +45,6 @@ async def generate_general_report(
         logger.error(error)
 
 
-@router.get(
-    '/generate_general_issues_report', 
-)
-async def issues_report(
-    uow: UowDep,
-    request: Request,
-    dates: tuple[datetime, datetime] = Depends(validate_dates),
-):  
-    try:
-        issue_service = IssueService(uow)
-        start_date, end_date  = dates
-        file_report = await issue_service.generate_issues_report(start_date, end_date)
-        if file_report is None:
-            raise HTTPException(status_code=400, detail="Some error")
-
-        return "Start generating issues report"
-        # return FileResponse(path=file_report, filename=f"issues-{start_date}-{end_date}.xlsx", media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        
-    except Exception as error:
-        logger.error(error)
-        return error
-
-
-@router.get(
-    '/save_general_issues_report', 
-)
-async def save_issues_report(
-    uow: UowDep,
-):  
-    try:
-        issue_service = IssueService(uow)
-        file_path = await issue_service.get_report_path()
-        return FileResponse(path=file_path, filename=f"issues-report.xlsx", media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        
-    except Exception as error:
-        logger.error(error)
-        return error
-
-
 @router.post(
     '/generate_general_issues_report_ver2', 
 )
@@ -143,7 +104,7 @@ async def save_report(
     res = await report_service.get_report_status(task_id)
 
     return StreamingResponse(
-                file_streamer(res["file_path"]),
-                media_type="application/vnd.ms-excel",
-                headers={"Content-Disposition": f"attachment; filename=report.xlsx"}
-            )
+            file_streamer(res["file_path"]),
+            media_type="application/vnd.ms-excel",
+            headers={"Content-Disposition": f"attachment; filename=report.xlsx"}
+        )
