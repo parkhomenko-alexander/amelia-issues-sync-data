@@ -1,10 +1,11 @@
 from asyncio import sleep
 from datetime import datetime
-from typing import Any
+from typing import Any, final
 
 
 from amelia_api_async import APIGrids, APIRoutes
 from app.celery.celery_app import celery_app
+from app.utils.redis_manager import CachePrefixes, RedisManager
 from .helpers import (DynamicIssuesResponse, ReturnTypeFromJsonQuery,
                                 ServicesMappers, ShortIssue,
                                 handle_response_of_json_query, run_async_task)
@@ -18,6 +19,9 @@ from config import config
 from logger import logger
 
 
+DYNAMIC_ISSUES_TAKS_STATUS_LOCKED = "LOCKED"
+DYNAMIC_ISSUES_TAKS_STATUS_UNLOCKED = "UNLOCKED"
+LOCK_KEY = "lock:sync_dynamic_issues"
 
 
 async def sync_history_statuses(issue_ids: list[int], delay: float = config.API_CALLS_DELAY) -> list[HistoryStatusRecord]:
@@ -36,7 +40,7 @@ async def sync_history_statuses(issue_ids: list[int], delay: float = config.API_
                 params = amelia_api.create_json_for_request(APIGrids.ISSUES_STATUSES, page, issue_id=iss_id)
                 params = amelia_api.encode_params(params)
                 response = await amelia_api.get(APIRoutes.ISSUES_STATUSES_WITH_QUERY, params=params)
-            
+
                 if response is None:
                     logger.info("Issues history statuses response is none")
                     return []
@@ -69,7 +73,7 @@ async def map_issue(iss: IssuePostSchema, mappers: dict) -> IssuePostSchema:
         room_id = None
     else:
         room_id = mappers["building_rooms_mapping"][building_title].get(iss.room_title)
-    
+
     iss.room_id = room_id
 
     if iss.declarer_id not in mappers["users_ids"]:
@@ -77,7 +81,7 @@ async def map_issue(iss: IssuePostSchema, mappers: dict) -> IssuePostSchema:
 
     iss.company_id = None if iss.company_name is None else mappers["company_title_id_mapped"][iss.company_name]
     iss.work_category_id = mappers["service_work_categories_mapped"][iss.service_id][iss.work_category_title]
-    
+
     iss.building_id = mappers["building_title_id_mapped"][building_title]
 
     iss.priority_id = None if iss.priority_title is None else mappers["priority_title_id_mapped"].get(iss.priority_title, None)
@@ -116,10 +120,9 @@ async def sync_issues(issues_id: list[int], delay: float = config.API_CALLS_DELA
 
     return issues_for_inserting
 
-async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
+async def sync_issues_dynamic(pages: None | int = None, issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
     start  = datetime.now()
     uow = SqlAlchemyUnitOfWork()
-    #? НЕ ЗАБЫТЬ поменять время и заюзать паге каунт 
     amelia_api: AmeliaApiAsync = AmeliaApiAsync()
     await amelia_api.auth()
 
@@ -137,16 +140,16 @@ async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = []
         logger.info(f"{tr}")
         url = amelia_api.generate_query_params_issues(path=APIGrids.DYNAMIC_ISSUES, page=1, start_date=tr[0], end_date=tr[1])
         params = amelia_api.encode_params(url)
-        logger.info(APIRoutes.DYNAMIC_ISSUES + params)
+        logger.info(APIRoutes.DYNAMIC_ISSUES + "?" + params)
         dynamic_iss_response = await amelia_api.get(APIRoutes.DYNAMIC_ISSUES + "?" + params)
         if dynamic_iss_response is None:
             logger.error("Dynamic issues response is none.")
             return
         response: DynamicIssuesResponse = DynamicIssuesResponse(**dynamic_iss_response.json())
-        if page is None:
+        if pages is None:
             page_count = response.page_count(amelia_api.pagination["per_page"])
         else:
-            page_count = page
+            page_count = pages
         issues: list[ShortIssue] = []
 
         for i in range(1, page_count):
@@ -196,7 +199,16 @@ async def sync_issues_dynamic(page: None | int = None, issues_id: list[int] = []
 
 @celery_app.task
 @run_async_task
-async def call_dynamic_issues(page: None | int = None, issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
-    delay = config.API_CALLS_DELAY
+async def call_dynamic_issues(pages: None | int = None, issues_id: list[int] = [], time_range: list[str] = [], delay: float = config.API_CALLS_DELAY):
+    redis_client = RedisManager()
 
-    await sync_issues_dynamic(page, issues_id, time_range, delay)
+    lock_timeout = 60 * 60 * 5
+    lock_value = await redis_client.get_cache(prefix=CachePrefixes.CELERY_TASK_DYNAMIC_ISSUES, key=LOCK_KEY,)
+    if lock_value is None or lock_value == DYNAMIC_ISSUES_TAKS_STATUS_UNLOCKED:
+        try:
+            await redis_client.set_cache(prefix=CachePrefixes.CELERY_TASK_DYNAMIC_ISSUES, key=LOCK_KEY, val=DYNAMIC_ISSUES_TAKS_STATUS_LOCKED, timeout=lock_timeout)
+            await sync_issues_dynamic(pages, issues_id, time_range, delay)
+        finally:
+            await redis_client.set_cache(prefix=CachePrefixes.CELERY_TASK_DYNAMIC_ISSUES, key=LOCK_KEY, val=DYNAMIC_ISSUES_TAKS_STATUS_UNLOCKED, timeout=lock_timeout)
+    else:
+        logger.info(f"Task 'sync_issues_dynamic' is already in progress. Skipping execution.")

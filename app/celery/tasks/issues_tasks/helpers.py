@@ -19,17 +19,35 @@ from app.services.workflow_service import WorkflowService
 from app.utils.unit_of_work import SqlAlchemyUnitOfWork
 from logger import logger 
 
+# def run_async_task(func):
+#     @functools.wraps(func)
+#     def wrapper(*args, **kwargs):
+#         try:
+#             loop = asyncio.get_event_loop()
+#         except RuntimeError:
+#             loop = asyncio.new_event_loop()
+#             logger.info("A new event loop was spawned.")
+#             asyncio.set_event_loop(loop)
+#             loop.run_forever()
+#         loop.run_until_complete(func(*args, **kwargs))
+#     return wrapper
+
 def run_async_task(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
+            # Try to get the current event loop
             loop = asyncio.get_event_loop()
         except RuntimeError:
+            # If no event loop exists, create a new one
             loop = asyncio.new_event_loop()
             logger.info("A new event loop was spawned.")
             asyncio.set_event_loop(loop)
-            loop.run_forever()
+
+        # Run the coroutine to completion
         loop.run_until_complete(func(*args, **kwargs))
+
+        # Optional: Close the loop if it was newly created
     return wrapper
 
 
