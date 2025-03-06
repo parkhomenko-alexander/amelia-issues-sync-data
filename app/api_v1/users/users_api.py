@@ -1,6 +1,8 @@
 
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.api_v1.auth_validators import get_current_active_user
 from app.api_v1.dependencies import UowDep
 from app.schemas.user_permission.system_user_schemas import SystemUserGetSchema, SystemUserPostSchema
 from app.services.permission.system_user_service import SystemUserService
@@ -23,9 +25,10 @@ async def get_users(
     '/me',
 )
 async def get_user_me(
+    current_user: Annotated[SystemUserGetSchema, Depends(get_current_active_user)]
 ):
     try:
-        ...
+        return current_user
     except Exception:
         ...
 

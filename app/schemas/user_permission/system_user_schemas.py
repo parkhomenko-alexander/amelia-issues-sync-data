@@ -14,3 +14,5 @@ class SystemUserPostSchema(GeneralSchema):
 class SystemUserGetSchema(GeneralSchema):
     id: int
     login: str
+    role: str
+    is_disabled: bool

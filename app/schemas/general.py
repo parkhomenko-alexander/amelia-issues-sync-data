@@ -9,7 +9,7 @@ class BaseUserModel(BaseModel):
         from_attributes=True,
         alias_generator=to_camel,
         extra="ignore",
-        populate_by_name=True,
+        populate_by_name=True
     )
 
 

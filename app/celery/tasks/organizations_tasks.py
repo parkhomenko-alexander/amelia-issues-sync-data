@@ -25,263 +25,263 @@ from config import config
 from logger import logger
 
 
-@celery_app.task
-@run_async_task
-async def sync_ficilities():
-    """
-        Get facilities
-    """
-    uow = SqlAlchemyUnitOfWork()
+# @celery_app.task
+# @run_async_task
+# async def sync_ficilities():
+#     """
+#         Get facilities
+#     """
+#     uow = SqlAlchemyUnitOfWork()
 
-    amelia_api: AmeliaApi = AmeliaApi()
-    amelia_api.auth()
+#     amelia_api: AmeliaApi = AmeliaApi()
+#     amelia_api.auth()
 
-    params = amelia_api.create_json_for_request(APIGrids.FACILITIES)
+#     params = amelia_api.create_json_for_request(APIGrids.FACILITIES)
 
-    response = amelia_api.get(APIRoutes.FACILITIES_WITH_QUERY, params=params)
-    if response is None:
-        msg = "Facility response is none"
-        logger.error(msg) 
-        return msg
+#     response = amelia_api.get(APIRoutes.FACILITIES_WITH_QUERY, params=params)
+#     if response is None:
+#         msg = "Facility response is none"
+#         logger.error(msg) 
+#         return msg
     
-    response_data: ReturnTypeFromJsonQuery[FacilityPostSchema] | None = handle_response_of_json_query(response, FacilityPostSchema)
+#     response_data: ReturnTypeFromJsonQuery[FacilityPostSchema] | None = handle_response_of_json_query(response, FacilityPostSchema)
     
-    facilities_data = response_data.data
-    facilities: list[FacilityPostSchema] = [FacilityPostSchema.model_validate(f) for f in facilities_data]
+#     facilities_data = response_data.data
+#     facilities: list[FacilityPostSchema] = [FacilityPostSchema.model_validate(f) for f in facilities_data]
     
-    facility_service = FacilityService(uow)
+#     facility_service = FacilityService(uow)
 
-    external_ids = [company.external_id for company in facilities]
-    existing_external_ids = await facility_service.get_existing_external_ids(external_ids)
-    elements_to_insert = [element for element in facilities if element.external_id not in existing_external_ids]
-    element_to_update = [element for element in facilities if element.external_id in existing_external_ids]
+#     external_ids = [company.external_id for company in facilities]
+#     existing_external_ids = await facility_service.get_existing_external_ids(external_ids)
+#     elements_to_insert = [element for element in facilities if element.external_id not in existing_external_ids]
+#     element_to_update = [element for element in facilities if element.external_id in existing_external_ids]
 
-    if elements_to_insert != []:
-        await facility_service.bulk_insert(elements_to_insert) 
-    if element_to_update != []:
-        await facility_service.bulk_update(element_to_update) 
-    msg = "Facilities were synchronized"
-    logger.info(msg) 
-    return msg
+#     if elements_to_insert != []:
+#         await facility_service.bulk_insert(elements_to_insert) 
+#     if element_to_update != []:
+#         await facility_service.bulk_update(element_to_update) 
+#     msg = "Facilities were synchronized"
+#     logger.info(msg) 
+#     return msg
 
-@celery_app.task
-@run_async_task
-async def sync_companies():
-    """
-        Get companies
-    """
-    uow = SqlAlchemyUnitOfWork()
+# @celery_app.task
+# @run_async_task
+# async def sync_companies():
+#     """
+#         Get companies
+#     """
+#     uow = SqlAlchemyUnitOfWork()
     
-    amelia_api = AmeliaApi()
-    amelia_api.auth()
+#     amelia_api = AmeliaApi()
+#     amelia_api.auth()
 
-    params = amelia_api.create_json_for_request(APIGrids.COMPANIES)
+#     params = amelia_api.create_json_for_request(APIGrids.COMPANIES)
 
-    response: Response | None = amelia_api.get(APIRoutes.COMPANIES_WITH_QUERY, params=params)
-    if response is None:
-        msg = "Companies response is none"
-        logger.error(msg)
-        return msg
+#     response: Response | None = amelia_api.get(APIRoutes.COMPANIES_WITH_QUERY, params=params)
+#     if response is None:
+#         msg = "Companies response is none"
+#         logger.error(msg)
+#         return msg
 
-    response_data: ReturnTypeFromJsonQuery[CompanyPostSchema] = handle_response_of_json_query(response, CompanyPostSchema)
+#     response_data: ReturnTypeFromJsonQuery[CompanyPostSchema] = handle_response_of_json_query(response, CompanyPostSchema)
    
-    pages: int = amelia_api.get_count_of_pages(response_data)
-    facilities_name_id_mapped: dict[str, int] = await FacilityService.get_title_id_mapping(uow)
+#     pages: int = amelia_api.get_count_of_pages(response_data)
+#     facilities_name_id_mapped: dict[str, int] = await FacilityService.get_title_id_mapping(uow)
 
-    logger.info("Companies are synchronize")
-    try:
-        company_service = CompanyService(uow)
+#     logger.info("Companies are synchronize")
+#     try:
+#         company_service = CompanyService(uow)
 
-        for i in range(1, pages):
-            params = amelia_api.create_json_for_request(APIGrids.COMPANIES, i)
-            response = amelia_api.get(APIRoutes.COMPANIES_WITH_QUERY, params=params)
+#         for i in range(1, pages):
+#             params = amelia_api.create_json_for_request(APIGrids.COMPANIES, i)
+#             response = amelia_api.get(APIRoutes.COMPANIES_WITH_QUERY, params=params)
 
-            if response is None:
-                msg = "Companies response is none"
-                logger.error(msg)
-                return msg
+#             if response is None:
+#                 msg = "Companies response is none"
+#                 logger.error(msg)
+#                 return msg
     
-            response_data: ReturnTypeFromJsonQuery[CompanyPostSchema] = handle_response_of_json_query(response, CompanyPostSchema)
+#             response_data: ReturnTypeFromJsonQuery[CompanyPostSchema] = handle_response_of_json_query(response, CompanyPostSchema)
 
-            companies: list[CompanyPostSchema] = []
-            for company in response_data.data:
-                company.facility_id = facilities_name_id_mapped[company.facility_title]
-                companies.append(company)
+#             companies: list[CompanyPostSchema] = []
+#             for company in response_data.data:
+#                 company.facility_id = facilities_name_id_mapped[company.facility_title]
+#                 companies.append(company)
 
-            external_ids = [company.external_id for company in companies]
-            existing_external_ids = await company_service.get_existing_external_ids(external_ids)
-            elements_to_insert = [element for element in companies if element.external_id not in existing_external_ids]
-            element_to_update = [element for element in companies if element.external_id in existing_external_ids]
-            print(elements_to_insert, element_to_update)
-            if elements_to_insert != []:
-                await company_service.bulk_insert(elements_to_insert) 
-            if element_to_update != []:
-                await company_service.bulk_update(element_to_update) 
+#             external_ids = [company.external_id for company in companies]
+#             existing_external_ids = await company_service.get_existing_external_ids(external_ids)
+#             elements_to_insert = [element for element in companies if element.external_id not in existing_external_ids]
+#             element_to_update = [element for element in companies if element.external_id in existing_external_ids]
+#             print(elements_to_insert, element_to_update)
+#             if elements_to_insert != []:
+#                 await company_service.bulk_insert(elements_to_insert) 
+#             if element_to_update != []:
+#                 await company_service.bulk_update(element_to_update) 
 
-    except Exception as e:
-        logger.exception(f"Some error occurred: {e}")
-        return e
+#     except Exception as e:
+#         logger.exception(f"Some error occurred: {e}")
+#         return e
     
-    logger.info("Companies were synchronized")
-    return
+#     logger.info("Companies were synchronized")
+#     return
 
-@celery_app.task
-@run_async_task
-async def sync_priorities():
-    """
-    Get priorities
-    """
+# @celery_app.task
+# @run_async_task
+# async def sync_priorities():
+#     """
+#     Get priorities
+#     """
 
-    uow = SqlAlchemyUnitOfWork()
+#     uow = SqlAlchemyUnitOfWork()
 
-    amelia_api: AmeliaApi = AmeliaApi()
-    amelia_api.auth()
+#     amelia_api: AmeliaApi = AmeliaApi()
+#     amelia_api.auth()
 
-    params = amelia_api.create_json_for_request(APIGrids.PRIORITIES)
+#     params = amelia_api.create_json_for_request(APIGrids.PRIORITIES)
 
-    response = amelia_api.get(APIRoutes.PRIORITIES_WITH_QUERY, params=params)
-    if response is None:
-        msg = "Priority response is none"
-        logger.error(msg) 
-        return msg
+#     response = amelia_api.get(APIRoutes.PRIORITIES_WITH_QUERY, params=params)
+#     if response is None:
+#         msg = "Priority response is none"
+#         logger.error(msg) 
+#         return msg
     
-    response_data: ReturnTypeFromJsonQuery[PriorityPostSchema] | None = handle_response_of_json_query(response, PriorityPostSchema)
+#     response_data: ReturnTypeFromJsonQuery[PriorityPostSchema] | None = handle_response_of_json_query(response, PriorityPostSchema)
     
-    priorities = response_data.data
-    # priorities: list[PriorityPostSchema] = [PriorityPostSchema.model_validate(f) for f in priorities_data]
+#     priorities = response_data.data
+#     # priorities: list[PriorityPostSchema] = [PriorityPostSchema.model_validate(f) for f in priorities_data]
     
-    facilities_name_id_mapped: dict[str, int] = await FacilityService.get_title_id_mapping(uow)
+#     facilities_name_id_mapped: dict[str, int] = await FacilityService.get_title_id_mapping(uow)
 
-    for p in priorities:
-        p.facility_id = facilities_name_id_mapped[p.facility_title]
+#     for p in priorities:
+#         p.facility_id = facilities_name_id_mapped[p.facility_title]
     
-    priority_service = PriorityService(uow)
+#     priority_service = PriorityService(uow)
 
-    external_ids = [priority.external_id for priority in priorities]
-    existing_external_ids = await priority_service.get_existing_external_ids(external_ids)
-    elements_to_insert = [element for element in priorities if element.external_id not in existing_external_ids]
-    element_to_update = [element for element in priorities if element.external_id in existing_external_ids]
+#     external_ids = [priority.external_id for priority in priorities]
+#     existing_external_ids = await priority_service.get_existing_external_ids(external_ids)
+#     elements_to_insert = [element for element in priorities if element.external_id not in existing_external_ids]
+#     element_to_update = [element for element in priorities if element.external_id in existing_external_ids]
 
-    if elements_to_insert != []:
-        await priority_service.bulk_insert(elements_to_insert) 
-    if element_to_update != []:
-        await priority_service.bulk_update(element_to_update) 
-    msg = "Priority were synchronized"
-    logger.info(msg) 
-    return msg
+#     if elements_to_insert != []:
+#         await priority_service.bulk_insert(elements_to_insert) 
+#     if element_to_update != []:
+#         await priority_service.bulk_update(element_to_update) 
+#     msg = "Priority were synchronized"
+#     logger.info(msg) 
+#     return msg
 
-@celery_app.task
-@run_async_task
-async def sync_workflows():
-    """
-    Get priorities
-    """
+# @celery_app.task
+# @run_async_task
+# async def sync_workflows():
+#     """
+#     Get priorities
+#     """
 
-    uow = SqlAlchemyUnitOfWork()
+#     uow = SqlAlchemyUnitOfWork()
 
-    amelia_api: AmeliaApi = AmeliaApi()
-    amelia_api.auth()
+#     amelia_api: AmeliaApi = AmeliaApi()
+#     amelia_api.auth()
 
-    params = amelia_api.create_json_for_request(APIGrids.WORKFLOWS)
+#     params = amelia_api.create_json_for_request(APIGrids.WORKFLOWS)
 
-    response = amelia_api.get(APIRoutes.WORKFLOWS_WITH_QUERY, params=params)
-    if response is None:
-        msg = "Workflow response is none"
-        logger.error(msg) 
-        return msg
-    response_data: ReturnTypeFromJsonQuery[WorkflowPostSchema] | None = handle_response_of_json_query(response, WorkflowPostSchema)
+#     response = amelia_api.get(APIRoutes.WORKFLOWS_WITH_QUERY, params=params)
+#     if response is None:
+#         msg = "Workflow response is none"
+#         logger.error(msg) 
+#         return msg
+#     response_data: ReturnTypeFromJsonQuery[WorkflowPostSchema] | None = handle_response_of_json_query(response, WorkflowPostSchema)
     
-    workflows = response_data.data
+#     workflows = response_data.data
     
-    workflows_name_id_mapped: dict[str, int] = await FacilityService.get_title_id_mapping(uow)
+#     workflows_name_id_mapped: dict[str, int] = await FacilityService.get_title_id_mapping(uow)
 
-    for p in workflows:
-        p.facility_id = workflows_name_id_mapped[p.facility_title]
+#     for p in workflows:
+#         p.facility_id = workflows_name_id_mapped[p.facility_title]
     
-    workflows_service = WorkflowService(uow)
+#     workflows_service = WorkflowService(uow)
 
-    external_ids = [priority.external_id for priority in workflows]
-    existing_external_ids = await workflows_service.get_existing_external_ids(external_ids)
-    elements_to_insert = [element for element in workflows if element.external_id not in existing_external_ids]
-    element_to_update = [element for element in workflows if element.external_id in existing_external_ids]
+#     external_ids = [priority.external_id for priority in workflows]
+#     existing_external_ids = await workflows_service.get_existing_external_ids(external_ids)
+#     elements_to_insert = [element for element in workflows if element.external_id not in existing_external_ids]
+#     element_to_update = [element for element in workflows if element.external_id in existing_external_ids]
 
-    if elements_to_insert != []:
-        await workflows_service.bulk_insert(elements_to_insert) 
-    if element_to_update != []:
-        await workflows_service.bulk_update(element_to_update) 
-    msg = "Workflows were synchronized"
-    logger.info(msg) 
-    return msg
+#     if elements_to_insert != []:
+#         await workflows_service.bulk_insert(elements_to_insert) 
+#     if element_to_update != []:
+#         await workflows_service.bulk_update(element_to_update) 
+#     msg = "Workflows were synchronized"
+#     logger.info(msg) 
+#     return msg
 
-@celery_app.task
-@run_async_task
-async def sync_users():
-    """
-    Sync users
-    """
+# @celery_app.task
+# @run_async_task
+# async def sync_users():
+#     """
+#     Sync users
+#     """
 
-    uow = SqlAlchemyUnitOfWork()
+#     uow = SqlAlchemyUnitOfWork()
 
-    amelia_api: AmeliaApi = AmeliaApi()
-    amelia_api.auth()
+#     amelia_api: AmeliaApi = AmeliaApi()
+#     amelia_api.auth()
 
-    params = amelia_api.create_json_for_request(APIGrids.USERS)
-    response: Response | None = amelia_api.get(APIRoutes.USERS_WITH_QUERY, params=params)
-    if response is None:
-        msg = "Users response is none"
-        logger.error(msg)
-        return msg
+#     params = amelia_api.create_json_for_request(APIGrids.USERS)
+#     response: Response | None = amelia_api.get(APIRoutes.USERS_WITH_QUERY, params=params)
+#     if response is None:
+#         msg = "Users response is none"
+#         logger.error(msg)
+#         return msg
     
-    response_data: ReturnTypeFromJsonQuery[UserPostSchema] = handle_response_of_json_query(response, UserPostSchema)
-    pages: int = amelia_api.get_count_of_pages(response_data)
+#     response_data: ReturnTypeFromJsonQuery[UserPostSchema] = handle_response_of_json_query(response, UserPostSchema)
+#     pages: int = amelia_api.get_count_of_pages(response_data)
 
-    company_title_id_mapped: dict[str, int] = await CompanyService.get_title_id_mapping(uow)
-    facility_title_id_mapping: dict[str, int] = await FacilityService.get_title_id_mapping(uow)
+#     company_title_id_mapped: dict[str, int] = await CompanyService.get_title_id_mapping(uow)
+#     facility_title_id_mapping: dict[str, int] = await FacilityService.get_title_id_mapping(uow)
 
-    logger.info("Users are synchronize")
-    try:
-        user_service = UserService(uow)
+#     logger.info("Users are synchronize")
+#     try:
+#         user_service = UserService(uow)
 
-        for i in range(1, pages):
-            params = amelia_api.create_json_for_request(APIGrids.USERS, i)
-            response = amelia_api.get(APIRoutes.USERS_WITH_QUERY, params=params)
+#         for i in range(1, pages):
+#             params = amelia_api.create_json_for_request(APIGrids.USERS, i)
+#             response = amelia_api.get(APIRoutes.USERS_WITH_QUERY, params=params)
             
-            if response is None:
-                msg = "Users response is none"
-                logger.error(msg)
-                return msg
+#             if response is None:
+#                 msg = "Users response is none"
+#                 logger.error(msg)
+#                 return msg
     
-            response_data: ReturnTypeFromJsonQuery[UserPostSchema] = handle_response_of_json_query(response, UserPostSchema)
+#             response_data: ReturnTypeFromJsonQuery[UserPostSchema] = handle_response_of_json_query(response, UserPostSchema)
 
-            users: list[UserPostSchema] = []
-            for user in response_data.data:
-                if user.external_id == 27:
-                    user.facility_id = facility_title_id_mapping["ДВФУ"]
-                    user.company_id = company_title_id_mapped["ДВФУ"]
-                    users.append(user)
-                    continue
-                user.facility_id = facility_title_id_mapping[user.facilities]
-                user.company_id = company_title_id_mapped[user.company_name]    
-                users.append(user)
+#             users: list[UserPostSchema] = []
+#             for user in response_data.data:
+#                 if user.external_id == 27:
+#                     user.facility_id = facility_title_id_mapping["ДВФУ"]
+#                     user.company_id = company_title_id_mapped["ДВФУ"]
+#                     users.append(user)
+#                     continue
+#                 user.facility_id = facility_title_id_mapping[user.facilities]
+#                 user.company_id = company_title_id_mapped[user.company_name]    
+#                 users.append(user)
 
 
 
-            external_ids = [e.external_id for e in users]
-            existing_external_ids = await user_service.get_existing_external_ids(external_ids)
+#             external_ids = [e.external_id for e in users]
+#             existing_external_ids = await user_service.get_existing_external_ids(external_ids)
 
-            elements_to_insert = [element for element in users if element.external_id not in existing_external_ids]
-            element_to_update = [element for element in users if element.external_id in existing_external_ids]
-            if elements_to_insert != []:
-                await user_service.bulk_insert(elements_to_insert) 
-            if element_to_update != []:
-                await user_service.bulk_update(element_to_update) 
+#             elements_to_insert = [element for element in users if element.external_id not in existing_external_ids]
+#             element_to_update = [element for element in users if element.external_id in existing_external_ids]
+#             if elements_to_insert != []:
+#                 await user_service.bulk_insert(elements_to_insert) 
+#             if element_to_update != []:
+#                 await user_service.bulk_update(element_to_update) 
 
-    except Exception as e:
-        logger.exception(f"Some error occurred: {e}")
-        return e
+#     except Exception as e:
+#         logger.exception(f"Some error occurred: {e}")
+#         return e
     
-    logger.info("Users were synchronized")
-    return
+#     logger.info("Users were synchronized")
+#     return
 
 
 @celery_app.task

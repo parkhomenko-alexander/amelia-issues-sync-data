@@ -12,5 +12,6 @@ class SystemUser(Base, BaseMixin):
     email: Mapped[str] = mapped_column(unique=True)
     password_hash: Mapped[str]
     timezone: Mapped[str]
+    is_disabled: Mapped[bool] = mapped_column(default=False)
 
     role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"))

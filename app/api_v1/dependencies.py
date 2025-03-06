@@ -21,7 +21,6 @@ RedisManagerDep = Annotated[
 ]
 
 
-
 def get_user_service_dep():
     return SystemUserService(SqlAlchemyUnitOfWork())
 
