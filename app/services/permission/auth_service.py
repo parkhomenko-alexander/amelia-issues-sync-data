@@ -1,17 +1,14 @@
 from datetime import datetime, timedelta
-from venv import create
+from fastapi import HTTPException
 from loguru import logger
 from passlib.context import CryptContext
 
-from app.db.models.system_user import SystemUser
-from app.schemas.user_permission.auth_schemas import ShortUserSchema, ShortUserWithRoleSchema
-from app.schemas.user_permission.system_user_schemas import SystemUserGetSchema
+from app.schemas.user_permission.auth_schemas import ShortUserWithRoleSchema
 from app.services.services_helper import with_uow
 from app.utils.unit_of_work import AbstractUnitOfWork
 
 from config import config
-
-from jose import JWTError, jwt
+import jwt 
 
 TOKEN_TYPE_KEY = "type"
 ACCESS_TOKEN_TYPE = "access"
@@ -28,11 +25,11 @@ class AuthService:
         if not user: 
             resp = f"User '{login}' not authentificated"
             logger.error(resp)
-            raise Exception(resp)
+            raise HTTPException(status_code=400, detail=resp)
         if not self._verify_password(password, user.password_hash):
             resp = f"Error in auth process for {login}"
             logger.error(resp)
-            raise Exception(resp)
+            raise HTTPException(status_code=400, detail=resp)
         else:
             return ShortUserWithRoleSchema.model_validate(user)
 
@@ -57,21 +54,20 @@ class AuthService:
         encoded_jwt = jwt.encode(to_encode, secret, algorithm=algorithm)
         return encoded_jwt
 
+    @staticmethod
     def decode_token(
-        self,
         token:str,
         secret: str = config.APPLICATION_SECRET_KEY,
         algorithm: str = config.APPLICATION_HASH_ALGORITHM
-    ):
-        try:
-            decoded = jwt.decode(token, secret, algorithms=[algorithm])
-            login = decoded.get("login")
-            role = decoded.get("role")
-            if login is None or role is None:
-                return None
-            return decoded
-        except JWTError:
-            return None
+    ) -> dict:
+        decoded = jwt.decode(token, secret, algorithms=[algorithm])
+        login = decoded.get("login")
+        role = decoded.get("role")
+        token_type = decoded.get("type")
+        if (login is None or role is None) and token_type == ACCESS_TOKEN_TYPE:
+            raise jwt.InvalidTokenError
+        return decoded
+
 
     def create_jwt(
         self,
@@ -91,9 +87,9 @@ class AuthService:
             expire_timedelta=expire_timedelta
         )
 
-    def create_access_token(self, user: ShortUserSchema, role: str) -> str:
+    def create_access_token(self, login: str, role: str) -> str:
         jwt_payload = {
-            "login": user.login,
+            "login": login,
             "role": role
         }
 
@@ -103,10 +99,9 @@ class AuthService:
             expire_minutes=config.APPLICATION_ACCESS_TOKEN_EXPIRE_MINUTES
         )
 
-
-    def create_refresh_token(self, user: ShortUserSchema) -> str:
+    def create_refresh_token(self, login: str) -> str:
         jwt_payload = {
-            "login": user.login,
+            "login": login,
         }
 
         return self.create_jwt(
@@ -114,7 +109,6 @@ class AuthService:
             token_data=jwt_payload,
             expire_timedelta=timedelta(minutes=config.APPLICATION_REFRESH_TOKEN_EXPIRE)
         )
-
 
     @staticmethod
     def _gen_password_hash(password: str) -> str:
