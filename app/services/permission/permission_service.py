@@ -6,6 +6,7 @@ from app.utils.unit_of_work import AbstractUnitOfWork
 from loguru import logger
 
 
+
 class PermissionService:
     def __init__(self, uow: AbstractUnitOfWork):
         self.uow = uow
@@ -17,7 +18,6 @@ class PermissionService:
         if existed_role:
             resp = f"Role '{role.title}' exits"
             logger.info(resp)
-            raise Exception(resp)
         else:
             dumped_role = role.model_dump()
             new_role = await self.uow.role_repo.add_one(dumped_role)
@@ -26,11 +26,20 @@ class PermissionService:
             logger.info(f"Role {role.title} was added")
             await self.uow.commit()
             return RoleGetSchema.model_validate(new_role)
+
+    @with_uow
+    async def get_role(self, **filters) -> RoleGetSchema:
+        role = await self.uow.role_repo.find_one(**filters)
+        if not role:
+            raise ValueError(f"Role not found with filters: {filters}!r")
+        return RoleGetSchema(title=role.title, id=role.id)
     
     @with_uow
     async def translate_role_id_str(self, role_id: int) -> str:
-        role = await self.uow.role_repo.find_one(id=role_id)
-        if not role:
-            raise Exception(f"Role {role_id} not found")
-        else:
-            return role.title
+        role = await self.get_role(id=role_id)
+        return role.title
+
+    @with_uow
+    async def translate_role_str_id(self, role_title: str) -> int:
+        role = await self.get_role(title=role_title)
+        return role.id

@@ -7,12 +7,14 @@ from app.schemas.user_permission.auth_schemas import ShortUserWithRoleSchema
 from app.services.services_helper import with_uow
 from app.utils.unit_of_work import AbstractUnitOfWork
 
-from config import config
+from config import get_config
 import jwt 
 
 TOKEN_TYPE_KEY = "type"
 ACCESS_TOKEN_TYPE = "access"
 REFRESH_TOKEN_TYPE = "refresh"
+
+config = get_config()
 
 class AuthService:
     def __init__(self, uow: AbstractUnitOfWork):
@@ -60,6 +62,8 @@ class AuthService:
         secret: str = config.APPLICATION_SECRET_KEY,
         algorithm: str = config.APPLICATION_HASH_ALGORITHM
     ) -> dict:
+        algorithm1: str = config.APPLICATION_HASH_ALGORITHM
+        
         decoded = jwt.decode(token, secret, algorithms=[algorithm])
         login = decoded.get("login")
         role = decoded.get("role")

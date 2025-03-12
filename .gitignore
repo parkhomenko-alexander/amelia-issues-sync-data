@@ -125,3 +125,7 @@ app/celery/celerybeat-schedule.dir
 
 
 reports/*
+
+app/db/init_data.json
+
+Dockerfile.dev

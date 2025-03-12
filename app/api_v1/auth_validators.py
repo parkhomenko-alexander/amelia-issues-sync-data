@@ -8,6 +8,7 @@ from app.api_v1.dependencies import SystemUserServiceDep, get_user_service_dep
 from app.schemas.user_permission.auth_schemas import TokenData, TokenSchema
 from app.schemas.user_permission.system_user_schemas import SystemUserGetSchema
 from app.services.permission.auth_service import ACCESS_TOKEN_TYPE, REFRESH_TOKEN_TYPE, TOKEN_TYPE_KEY
+from app.services.permission.system_user_service import SystemUserService
 from config import config 
 from loguru import logger
 
@@ -47,7 +48,7 @@ def validate_token_type(
 
 async def get_current_user(
     payload: dict,
-    user_service: SystemUserServiceDep = get_user_service_dep()
+    user_service: SystemUserService
 ) -> SystemUserGetSchema:
     error_resp = "Error in auth process"
     headers={"WWW-Authenticate": "Bearer"}
@@ -79,16 +80,18 @@ async def get_current_user(
             headers=headers
         )
     return user
-
+ 
 
 def get_current_user_by_token_type(
     token_type: str,
 ) -> Callable[..., Coroutine[Any, Any, SystemUserGetSchema]]:
     async def get_auth_user_from_token(
+        user_service: SystemUserServiceDep,
         payload: dict = Depends(get_current_token_payload),
     ) -> SystemUserGetSchema:
         validate_token_type(payload, token_type)
-        return await get_current_user(payload)
+        return await get_current_user(payload, user_service)
+
     return get_auth_user_from_token
 
 get_current_auth_user = get_current_user_by_token_type(ACCESS_TOKEN_TYPE)

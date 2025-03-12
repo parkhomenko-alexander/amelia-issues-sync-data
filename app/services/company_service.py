@@ -7,7 +7,7 @@ from app.utils.unit_of_work import AbstractUnitOfWork
 class CompanyService():
     def __init__(self, uow: AbstractUnitOfWork):
         self.uow = uow
-    
+
     @with_uow
     async def bulk_insert(self, companies_post: list[CompanyPostSchema]) -> int:
         """
