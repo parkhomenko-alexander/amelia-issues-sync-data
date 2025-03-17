@@ -611,7 +611,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         return res
 
 
-    async def get_filtered_issues_for_report_ver4(self, chunk: list[int]):
+    async def get_filtered_issues_for_report_ver4(self, chunk: list[int]) :
         t1 = datetime.now()
         chunk_ids_cte = (
             select(

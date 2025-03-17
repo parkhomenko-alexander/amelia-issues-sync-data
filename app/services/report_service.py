@@ -95,16 +95,13 @@ class ReportService:
                     for row in reversed(rows):
                         end_date = close_date = ""
                         
-                        if row.last_status == "исполнена":
+                        if row.last_status == "исполнена"  or row.last_status == "отказано":
                             end_date = row.last_status_created
                             close_date = ""
                         elif row.pred_status == "исполнена" and row.last_status == "закрыта" :
                             end_date = row.pred_status_created
                             close_date = row.last_status_created
-                        elif row.last_status == "отказано":
-                            end_date = row.last_status_created
-                            close_date = ""
-                        
+
                         compare_date = end_date if end_date else current_time
                         # logger.debug(f"{row.external_id} {row.finish_date_plane.tzinfo}, {compare_date.tzinfo}, ")
 
