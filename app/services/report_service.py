@@ -31,6 +31,10 @@ class ReportService:
         filters: IssuesFiltersSchema,
         task_id: str
     ) -> str | None:
+        
+        def format_date(dt):
+            return dt.strftime('%Y-%m-%d %H:%M:%S') if dt else ""
+        
         await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status", "processing")
 
         output_file = await self.get_report_path() + f"/issues_report_{task_id}.xlsx"  # Уникальный файл для задачи
@@ -50,8 +54,8 @@ class ReportService:
         for col, header in enumerate(headers):
             worksheet.write(0, col, header, bold_format)
         current_time = datetime.now()
-        try:
 
+        try:
             match filters.transition.statuses:
                 case []:
                     statuses = await self.uow.statuses_history_repo.get_unique_statuses()
@@ -78,43 +82,37 @@ class ReportService:
             ids = sorted(ids, reverse=True)
             if ids != []:
                 
-                if len(ids) > 50000:
-                    chunks = self.split_list_into_chunks(ids, chunk_size=10000)
+                if len(ids) > 50_000:
+                    chunks = self.split_list_into_chunks(ids, chunk_size=20000)
                 else:
                     chunks = [ids]
-
+                t1 = datetime.now()
                 for chunk in chunks:
-                    rows: Sequence[Row] = await self.uow.issues_repo.get_filtered_issues_for_report_ver2(
+                    rows: Sequence[Row] = await self.uow.issues_repo.get_filtered_issues_for_report_ver4(
                         chunk
                     )
 
                     for row in reversed(rows):
+                        end_date = close_date = ""
+                        
                         if row.last_status == "исполнена":
                             end_date = row.last_status_created
                             close_date = ""
                         elif row.pred_status == "исполнена" and row.last_status == "закрыта" :
                             end_date = row.pred_status_created
                             close_date = row.last_status_created
-                        # ! отказано
-                        else:
-                            end_date = close_date = ""
+                        elif row.last_status == "отказано":
+                            end_date = row.last_status_created
+                            close_date = ""
                         
                         compare_date = end_date if end_date else current_time
+                        # logger.debug(f"{row.external_id} {row.finish_date_plane.tzinfo}, {compare_date.tzinfo}, ")
 
                         if row.finish_date_plane and compare_date > row.finish_date_plane:
                             overdue = "просрочена"
                         else:
                             overdue = ""
-                        
-                        end_date_formatted = end_date.strftime('%Y-%m-%d %H:%M:%S') if end_date else ""
-                        close_date_formatted = close_date.strftime('%Y-%m-%d %H:%M:%S') if close_date else ""
-                        finish_date_plane_formatted = (
-                            row.finish_date_plane.strftime('%Y-%m-%d %H:%M:%S') if row.finish_date_plane else ""
-                        )
-                        first_status_created_formatted = (
-                            row.first_status_created.strftime('%Y-%m-%d %H:%M:%S') if row.first_status_created else ""
-                        )
-                        
+
                         room_title = row.room_title.split(" ")[0] if row.room_title else ""
                         worksheet.write(row_ind, 0, row.external_id or "")
                         worksheet.write(row_ind, 1, row.service_title or "")
@@ -123,11 +121,10 @@ class ReportService:
 
                         worksheet.write(row_ind, 4, row.last_status or "")
                         
-                        worksheet.write(row_ind, 5, first_status_created_formatted or "")
-                        worksheet.write(row_ind, 6, end_date_formatted or "")
-                        worksheet.write(row_ind, 7, close_date_formatted or "")
-                        worksheet.write(row_ind, 8, finish_date_plane_formatted or "")
-
+                        worksheet.write(row_ind, 5, format_date(row.first_status_created))
+                        worksheet.write(row_ind, 6, format_date(end_date))
+                        worksheet.write(row_ind, 7, format_date(close_date))
+                        worksheet.write(row_ind, 8, format_date(row.finish_date_plane))
 
                         worksheet.write(row_ind, 9, row.rating or "")
                         worksheet.write(row_ind, 10, row.building_title or "")
@@ -150,7 +147,8 @@ class ReportService:
                 worksheet.set_column(13, 13, prior_len)
                 worksheet.set_column(14, 14, prior_len)
                 worksheet.set_column(15, 15, prior_len)
-
+                t2 = datetime.now()
+                logger.info((t2-t1).total_seconds())
             workbook.close()
             await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status", "completed")
             await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:file_path", output_file)
@@ -160,7 +158,7 @@ class ReportService:
             return task_id
              
         except Exception as e:
-            logger.exception(e)
+            logger.error(e)
             await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status", "failed")
             return None
         

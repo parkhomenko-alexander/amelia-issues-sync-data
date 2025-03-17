@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from loguru import logger
 from passlib.context import CryptContext
@@ -44,7 +44,7 @@ class AuthService:
         algorithm: str = config.APPLICATION_HASH_ALGORITHM
     ) -> str:
         to_encode = payload.copy()
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         if expire_timedelta:
             expire_date = now + expire_timedelta
         else:
@@ -62,8 +62,6 @@ class AuthService:
         secret: str = config.APPLICATION_SECRET_KEY,
         algorithm: str = config.APPLICATION_HASH_ALGORITHM
     ) -> dict:
-        algorithm1: str = config.APPLICATION_HASH_ALGORITHM
-        
         decoded = jwt.decode(token, secret, algorithms=[algorithm])
         login = decoded.get("login")
         role = decoded.get("role")
