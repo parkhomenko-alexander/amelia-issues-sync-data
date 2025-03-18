@@ -18,6 +18,7 @@ from app.db.models.status_history import StatusHistory
 from app.db.models.user import User
 from app.db.models.work_category import WorkCategory
 from app.repositories.abstract_repository import SQLAlchemyRepository
+from app.utils.benchmark import perfomance_timer
 
 
 class IssueRepository(SQLAlchemyRepository[Issue]):
@@ -610,9 +611,8 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
         res: Sequence[Row] = query_res.all()
         return res
 
-
+    @perfomance_timer
     async def get_filtered_issues_for_report_ver4(self, chunk: list[int]) :
-        t1 = datetime.now()
         chunk_ids_cte = (
             select(
                 func.unnest(literal_column(f"ARRAY{chunk}::INTEGER[]")).label("chunk_ids")
@@ -710,11 +710,8 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
 
         query_res: Result = await self.async_session.execute(base_query)
         res: Sequence[Row] = query_res.all()
-        t2 = datetime.now()
-        logger.info((t2-t1).total_seconds())
         return res
 
-    # @lru_cache(maxsize=30)
     async def get_count_issues_with_filters_for_report_ver2(
     self,
     start_date: datetime,

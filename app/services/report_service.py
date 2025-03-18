@@ -10,6 +10,7 @@ from sqlalchemy import Row
 
 from app.schemas.issue_schemas import IssuesFiltersSchema
 from app.services.services_helper import with_uow
+from app.utils.benchmark import perfomance_timer
 from app.utils.redis_manager import CachePrefixes, RedisManager
 from app.utils.unit_of_work import AbstractUnitOfWork
 
@@ -24,7 +25,7 @@ class ReportService:
         chunks = [ids[i:i + chunk_size] for i in range(0, len(ids), chunk_size)]
         return chunks
 
-
+    @perfomance_timer
     @with_uow
     async def generate_issues_report_ver2(
         self,

@@ -1,17 +1,14 @@
-from datetime import datetime
 from typing import AsyncGenerator
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Request
 from fastapi.responses import FileResponse, StreamingResponse
 
 from app.api_v1.dependencies import RedisManagerDep, UowDep
-from app.api_v1.report.dependencies import validate_dates
 from app.schemas.issue_schemas import IssuesFiltersSchema
-from app.services.issue_service import IssueService
 from app.services.report_service import ReportService
 from app.services.room_service import RoomService
-from app.utils.redis_manager import RedisManager
+from app.utils.benchmark import perfomance_timer
 from logger import logger
 
 router = APIRouter(
@@ -45,6 +42,7 @@ async def generate_general_report(
         logger.error(error)
 
 
+@perfomance_timer
 @router.post(
     '/generate_general_issues_report_ver2', 
 )
