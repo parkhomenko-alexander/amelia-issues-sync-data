@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from loguru import logger
 from passlib.context import CryptContext
@@ -7,12 +7,14 @@ from app.schemas.user_permission.auth_schemas import ShortUserWithRoleSchema
 from app.services.services_helper import with_uow
 from app.utils.unit_of_work import AbstractUnitOfWork
 
-from config import config
+from config import get_config
 import jwt 
 
 TOKEN_TYPE_KEY = "type"
 ACCESS_TOKEN_TYPE = "access"
 REFRESH_TOKEN_TYPE = "refresh"
+
+config = get_config()
 
 class AuthService:
     def __init__(self, uow: AbstractUnitOfWork):
@@ -42,7 +44,7 @@ class AuthService:
         algorithm: str = config.APPLICATION_HASH_ALGORITHM
     ) -> str:
         to_encode = payload.copy()
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         if expire_timedelta:
             expire_date = now + expire_timedelta
         else:

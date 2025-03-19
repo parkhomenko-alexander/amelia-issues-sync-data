@@ -2,8 +2,9 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Sequence
 
-from sqlalchemy import (CTE, ColumnElement, Result, Row,
-                        Select, Subquery, and_, between, desc, func, select)
+from loguru import logger
+from sqlalchemy import (CTE, Case, ColumnElement, Result, Row,
+                        Select, Subquery, and_, between, desc, func, literal_column, select)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import Building, Company
@@ -17,6 +18,7 @@ from app.db.models.status_history import StatusHistory
 from app.db.models.user import User
 from app.db.models.work_category import WorkCategory
 from app.repositories.abstract_repository import SQLAlchemyRepository
+from app.utils.benchmark import perfomance_timer
 
 
 class IssueRepository(SQLAlchemyRepository[Issue]):
@@ -487,7 +489,229 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
 
         return res 
 
-    # @lru_cache(maxsize=30)
+
+
+    async def get_filtered_issues_for_report_ver3(self, chunk: list[int]):
+
+        ranked_statuses_subq = (
+            select(
+                StatusHistory.issue_id,
+                StatusHistory.status,
+                func.timezone("UTC-10", StatusHistory.created_at).label("rank_created_at"),
+                func.row_number()
+                .over(partition_by=StatusHistory.issue_id, order_by=desc(StatusHistory.external_id))
+                .label("rank")
+            )
+            .where(StatusHistory.issue_id.in_(chunk))
+            .subquery("RankedStatuses")
+        )
+        # query_res: Result = await self.async_session.execute(select(ranked_statuses_subq))
+        # r1:  Sequence[Row] = query_res.all()
+
+        max_rank_statuses_subq = (
+            select(
+                ranked_statuses_subq.c.issue_id,
+                func.max(ranked_statuses_subq.c.rank).label("max_rank")
+            )
+            .group_by(ranked_statuses_subq.c.issue_id)
+            .subquery("MaxRankForFirstStatus")
+        )
+
+        first_stasuses_subq = (
+            select(
+                ranked_statuses_subq.c.issue_id,
+                # ranked_statuses_subq.c.status.label("first_status"),
+                ranked_statuses_subq.c.rank_created_at.label("first_status_created")
+            )
+            .join_from(
+                max_rank_statuses_subq,
+                ranked_statuses_subq,
+                onclause=and_(
+                    max_rank_statuses_subq.c.issue_id==ranked_statuses_subq.c.issue_id,
+                    max_rank_statuses_subq.c.max_rank==ranked_statuses_subq.c.rank
+                )
+            )
+            .subquery("FirstStatuses")
+        )
+        # query_res: Result = await self.async_session.execute(select(first_stasuses_subq))
+        # r2:  Sequence[Row] = query_res.all()
+
+        last_status_subq = (
+             select(
+                ranked_statuses_subq.c.issue_id,
+                ranked_statuses_subq.c.status.label("last_status"),
+                ranked_statuses_subq.c.rank_created_at.label("last_status_created")
+            )
+            .where(ranked_statuses_subq.c.rank==1)
+            .subquery("LastStatus")
+        )
+        # query_res: Result = await self.async_session.execute(select(last_status_subq))
+        # r3:  Sequence[Row] = query_res.all()
+
+        pred_last_status_subq = (
+             select(
+                ranked_statuses_subq.c.issue_id,
+                ranked_statuses_subq.c.status.label("pred_status"),
+                ranked_statuses_subq.c.rank_created_at.label("pred_status_created")
+            )
+            .where(ranked_statuses_subq.c.rank==2)
+            .subquery("PrevLastStatus")
+        )
+        # query_res: Result = await self.async_session.execute(select(pred_last_status_subq))
+        # r4:  Sequence[Row] = query_res.all()
+
+
+        base_query = (
+            select(
+                self.model.external_id,
+                self.model.description.label("iss_descr"),
+                self.model.rating,
+                self.model.urgency,
+                self.model.work_place,
+                func.timezone("UTC-10", self.model.finish_date_plane).label("finish_date_plane"),
+                Service.title.label("service_title"),
+                WorkCategory.title.label("wc_title"),
+                Building.title.label("building_title"),
+                Room.title.label("room_title"),
+                Priority.title.label("prior_title"),
+
+                last_status_subq.c.last_status,
+                last_status_subq.c.last_status_created,
+
+                pred_last_status_subq.c.pred_status,
+                pred_last_status_subq.c.pred_status_created,
+
+                first_stasuses_subq.c.first_status_created
+            )
+            .join_from(
+                first_stasuses_subq,
+                self.model,
+                first_stasuses_subq.c.issue_id==self.model.external_id,
+            )
+            .join_from(
+                first_stasuses_subq,
+                last_status_subq,
+                first_stasuses_subq.c.issue_id==last_status_subq.c.issue_id,
+                isouter=True
+            )
+            .join_from(
+                first_stasuses_subq,
+                pred_last_status_subq,
+                first_stasuses_subq.c.issue_id==pred_last_status_subq.c.issue_id,
+                isouter=True
+            )
+            .join(Service, self.model.service_id == Service.external_id)
+            .join(WorkCategory, self.model.work_category_id == WorkCategory.id)
+            .join(Building, self.model.building_id == Building.id)
+            .outerjoin(Room, self.model.room_id == Room.id)
+            .outerjoin(Priority, self.model.priority_id == Priority.id)
+        )
+
+        query_res: Result = await self.async_session.execute(base_query)
+        res: Sequence[Row] = query_res.all()
+        return res
+
+    @perfomance_timer
+    async def get_filtered_issues_for_report_ver4(self, chunk: list[int]) :
+        chunk_ids_cte = (
+            select(
+                func.unnest(literal_column(f"ARRAY{chunk}::INTEGER[]")).label("chunk_ids")
+            ).cte("ChunkIDs")
+        )
+        
+        # Compute ranked statuses once
+        ranked_statuses_cte = (
+            select(
+                StatusHistory.issue_id,
+                StatusHistory.status,
+                func.timezone("UTC-10", StatusHistory.created_at).label("rank_created_at"),
+                func.row_number()
+                .over(partition_by=StatusHistory.issue_id, order_by=desc(StatusHistory.external_id))
+                .label("rank"),
+            )
+            # .where(StatusHistory.issue_id.in_(chunk))
+            .join(chunk_ids_cte, StatusHistory.issue_id == chunk_ids_cte.c.chunk_ids)  # Faster than WHERE IN
+            .cte("RankedStatuses")
+        )
+        # query_res: Result = await self.async_session.execute(select(ranked_statuses_cte))
+        # r1:  Sequence[Row] = query_res.all()
+
+        # Select first, last, and previous statuses from ranked table
+        ranked_issues_cte = (
+            select(
+                ranked_statuses_cte.c.issue_id,
+                func.max(ranked_statuses_cte.c.rank).label("max_rank"),  # Find max rank per issue
+
+                func.max(
+                    Case(
+                        (ranked_statuses_cte.c.rank == 1, ranked_statuses_cte.c.status),
+                        else_=None
+                    )
+                ).label("last_status"),
+
+                func.max(
+                    Case(
+                        (ranked_statuses_cte.c.rank == 1, ranked_statuses_cte.c.rank_created_at),
+                        else_=None
+                    )
+                ).label("last_status_created"),
+
+                func.max(
+                    Case(
+                        (ranked_statuses_cte.c.rank == 2, ranked_statuses_cte.c.status),
+                        else_=None
+                    )
+                ).label("pred_status"),
+
+                func.max(
+                    Case(
+                        (ranked_statuses_cte.c.rank == 2, ranked_statuses_cte.c.rank_created_at),
+                        else_=None
+                    )
+                ).label("pred_status_created"),
+
+                func.min(
+                    ranked_statuses_cte.c.rank_created_at  # Get the earliest status created time
+                ).label("first_status_created"),
+            )
+            .group_by(ranked_statuses_cte.c.issue_id)
+            .cte("RankedIssues")
+        )
+        # query_res: Result = await self.async_session.execute(select(ranked_issues_cte))
+        # r2:  Sequence[Row] = query_res.all()
+        # Final query joining issues with computed ranked statuses
+        base_query = (
+            select(
+                self.model.external_id,
+                self.model.description.label("iss_descr"),
+                self.model.rating,
+                self.model.urgency,
+                self.model.work_place,
+                func.timezone("UTC-10", self.model.finish_date_plane).label("finish_date_plane"),
+                Service.title.label("service_title"),
+                WorkCategory.title.label("wc_title"),
+                Building.title.label("building_title"),
+                Room.title.label("room_title"),
+                Priority.title.label("prior_title"),
+
+                ranked_issues_cte.c.last_status,
+                ranked_issues_cte.c.last_status_created,
+                ranked_issues_cte.c.pred_status,
+                ranked_issues_cte.c.pred_status_created,
+                ranked_issues_cte.c.first_status_created,
+            )
+            .join_from(ranked_issues_cte, self.model, self.model.external_id == ranked_issues_cte.c.issue_id)
+            .join(Service, self.model.service_id == Service.external_id)
+            .join(WorkCategory, self.model.work_category_id == WorkCategory.id)
+            .join(Building, self.model.building_id == Building.id)
+            .outerjoin(Room, self.model.room_id == Room.id)
+            .outerjoin(Priority, self.model.priority_id == Priority.id)
+        )
+
+        query_res: Result = await self.async_session.execute(base_query)
+        res: Sequence[Row] = query_res.all()
+        return res
+
     async def get_count_issues_with_filters_for_report_ver2(
     self,
     start_date: datetime,
@@ -503,7 +727,6 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
     urgencies: list[str]=[],
     current_statuses: list[str]=[],
 ) -> int | None:
-    
         conditions: list[ColumnElement] = self.prepare_conditions(buildings_id, services_id, works_category_id, rooms_id, priorities_id,
             urgencies
         )
@@ -522,7 +745,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
             .subquery()
         )
 
-        
+
         # query_res: Result = await self.async_session.execute(select(transition_in_statuses_by_period))
         # res2: Sequence[Row] = query_res.all()
 
@@ -617,7 +840,7 @@ class IssueRepository(SQLAlchemyRepository[Issue]):
 
         query_res: Result = await self.async_session.execute(join_transition_with_cretion_at_time_cte)
         res6 = query_res.scalar()
-        
+
         return res6
 
 

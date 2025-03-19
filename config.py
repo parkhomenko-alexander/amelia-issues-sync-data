@@ -1,8 +1,7 @@
+from functools import lru_cache
 import os
 
-from dotenv import find_dotenv, load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import false
 
 DOTENV = os.path.join(os.path.dirname(__file__), ".env")
 
@@ -26,6 +25,9 @@ class Config(BaseSettings):
     APPLICATION_ACCESS_TOKEN_EXPIRE_MINUTES: int = 0
     APPLICATION_REFRESH_TOKEN_EXPIRE: int = 0
 
+    APPLICATION_INIT_DB_DATA_PATH: str = ""
+    APPLICATION_INIT_DB_DATA_FILENAME: str = ""
+
     DB_URI: str = ""
     DB_ECHO: bool = False 
 
@@ -44,9 +46,13 @@ class Config(BaseSettings):
     API_CALLS_TIMEOUT_DELAY: float = 3
 
 
-    model_config = SettingsConfigDict(env_file=DOTENV)
+    model_config = SettingsConfigDict(env_file=DOTENV, extra="ignore")
 
     def get_redis_uri(self) -> str:
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
 config = Config()
+
+@lru_cache
+def get_config() -> Config:
+    return Config()

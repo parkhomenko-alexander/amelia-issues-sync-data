@@ -1,0 +1,17 @@
+stages:
+  - build
+  - deploy
+
+build_job:
+  stage: build
+  script:
+    - echo "Running build steps..."
+  only:
+    - dev
+
+deploy_job:
+  stage: deploy
+  needs: 
+    - build_job 
+  scrit:
+    - echo "Deploy jonb"

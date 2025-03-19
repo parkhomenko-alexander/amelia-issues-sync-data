@@ -1,3 +1,4 @@
+from functools import lru_cache
 import os
 import traceback
 from datetime import datetime, timedelta
@@ -15,6 +16,7 @@ from app.schemas.issue_schemas import (FilteredIssue, FilteredIssuesGetSchema,
                                        IssuesFiltersSchema, ThinDict, WorkCat)
 from app.schemas.status_schemas import HistoryStatusRecord
 from app.services.services_helper import with_uow
+from app.utils.benchmark import perfomance_timer
 from app.utils.unit_of_work import AbstractUnitOfWork
 
 
@@ -203,6 +205,7 @@ class IssueService():
                  
             return res_dict
 
+    @perfomance_timer
     @with_uow
     async def get_filtered_issues(
         self,
@@ -250,8 +253,7 @@ class IssueService():
                 filters.current_statuses
             )
             issues: list[FilteredIssue] = []
-            current_time = datetime.now()
-            
+
             iss_ids = sorted(iss_ids, reverse=True)
             if iss_ids == [] :
                 res = FilteredIssuesGetSchema(
@@ -260,26 +262,28 @@ class IssueService():
                     issues=issues
                 )
                 return res
-            
-            rows = await self.uow.issues_repo.get_filtered_issues_for_report_ver2(iss_ids)
+
+            rows = await self.uow.issues_repo.get_filtered_issues_for_report_ver4(iss_ids)
             for row in reversed(rows):
-                if row.last_status == "исполнена":
+                end_date = close_date = None
+
+                if row.last_status == "исполнена" or row.last_status == "отказано":
                     end_date = row.last_status_created
                     close_date = None
-                elif row.pred_status == "исполнена" and row.last_status == "закрыта":
+                elif row.pred_status == "исполнена" and row.last_status == "закрыта" :
                     end_date = row.pred_status_created
                     close_date = row.last_status_created
-                else:
-                    end_date = close_date = None
+
+                # compare_date = end_date if end_date else current_time
+                # logger.debug(f"{row.external_id} {row.finish_date_plane.tzinfo}, {compare_date.tzinfo}, ")
+
+                # if row.finish_date_plane and compare_date > row.finish_date_plane:
+                #     overdue = "просрочена"
+                # else:
+                #     overdue = ""
+
                 room_title = row.room_title.split(" ")[0] if row.room_title else ""
 
-                compare_date = end_date if end_date else current_time
-
-                if row.finish_date_plane and compare_date > row.finish_date_plane:
-                    overdue = "просрочена"
-                else:
-                    overdue = ""
-                
                 filtered_iss: FilteredIssue = FilteredIssue(
                     id=row.external_id,
                     service_title=row.service_title,
@@ -312,14 +316,16 @@ class IssueService():
         except Exception as e:
             logger.error(e)
             logger.error(traceback.format_exc())
-            return None
+            raise ValueError("Error during getting filtered issues")
 
+    @lru_cache()
     @with_uow
     async def get_count(
         self,
     ) -> int:
         return await self.uow.issues_repo.get_count()
 
+    @lru_cache()
     @with_uow
     async def get_filter_values(
         self,

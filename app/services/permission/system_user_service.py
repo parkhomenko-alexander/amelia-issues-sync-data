@@ -8,33 +8,34 @@ from app.utils.unit_of_work import AbstractUnitOfWork
 from loguru import logger
 
 
-
 class SystemUserService:
     def __init__(self, uow: AbstractUnitOfWork):
         self.uow = uow
 
     @with_uow
-    async def create_user(self, user: SystemUserPostSchema, role: str = "user") -> SystemUserGetSchema:
+    async def create_user(self, user: SystemUserPostSchema) -> SystemUserGetSchema | None:
         pas = AuthService._gen_password_hash(user.password)
-        role_id = 10
         user.password = pas
-        user.role_id = role_id
         dumped_user = user.model_dump(exclude={"password"})
         dumped_user["password_hash"] = pas
 
         existed_user: SystemUser | None = await self.uow.system_user_repo.find_one(login=user.login)
-
         if existed_user:
             resp = f"User '{user.login}' exists"
             logger.info(resp)
-            raise Exception(resp)
+            return None
         else:
             new_user = await self.uow.system_user_repo.add_one(dumped_user)
             if not new_user:
                 raise Exception("New user not created")
             logger.info(f"User {user.login} was created")
             await self.uow.commit()
-            return SystemUserGetSchema.model_validate(new_user)
+            role = await self.uow.role_repo.find_one(id=user.role_id)
+            if not role:
+                raise Exception(f"Bad role id {user.role_id}!r")
+            return SystemUserGetSchema.model_validate(
+                {**new_user.__dict__, "role": role.title}, from_attributes=True
+            )
 
     @with_uow
     async def get_user(self, login: str) -> SystemUserGetSchema | None:

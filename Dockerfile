@@ -1,7 +1,15 @@
-FROM python:3.11.5-slim-bullseye
-RUN apt update && apt -y upgrade
-WORKDIR /usr/src/app
-ENV PYTHONPATH="/usr/src/app:$PYTHONPATH"
-COPY ./requirements.txt ./
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
-COPY ./ ./
+FROM python:3.11.11-alpine3.20
+
+RUN apk update && apk add --no-cache build-base \
+    python3-dev  musl-dev \
+    linux-headers
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+ENV PATH="/root/.local/bin/:$PATH"
+ENV PYTHONPATH=/app
+WORKDIR /app
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen
+
+COPY . ./

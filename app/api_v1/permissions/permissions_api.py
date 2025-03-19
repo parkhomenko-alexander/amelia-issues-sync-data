@@ -12,34 +12,9 @@ router = APIRouter(
 @router.get(
     '',
 )
-async def get_users(
+async def mock(
 ):
     try:
         ...
-    except Exception:
-        ...
-
-@router.get(
-    '/me',
-)
-async def get_user_me(
-):
-    try:
-        ...
-    except Exception:
-        ...
-
-@router.post(
-    '',
-    response_model=SystemUserGetSchema
-)
-async def create_user(
-    user: SystemUserPostSchema,
-    uow: UowDep
-):
-    try:
-        service = SystemUserService(uow)
-        new_user = await service.create_user(user)
-        return new_user
     except Exception:
         ...
