@@ -6,12 +6,16 @@ build_job:
   stage: build
   script:
     - echo "Running build steps..."
-  only:
-    - dev
+
 
 deploy_job:
   stage: deploy
   needs: 
     - build_job 
-  scrit:
+  script:
     - echo "Deploy jonb"
+
+
+only:
+  refs:
+    -dev
