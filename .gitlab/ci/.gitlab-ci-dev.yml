@@ -6,16 +6,14 @@ build_job:
   stage: build
   script:
     - echo "Running build steps..."
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "dev"'
 
 
 deploy_job:
   stage: deploy
-  needs: 
-    - build_job 
+  needs: [build_job]
   script:
-    - echo "Deploy jonb"
+    - echo "Deploy job"
 
 
-only:
-  refs:
-    -dev
