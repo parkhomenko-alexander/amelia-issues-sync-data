@@ -23,6 +23,6 @@ deploy_job:
   tags: [cloud2]
   before_script:
    - cat $DOCKER_CA_CLOUD2
-   - docker --tlsverify  --tlscacert=$DOCKER_CA_CLOUD2 --tlscert=$DOCKER_CERT_CLOUD2 --tlskey=$DOCKER_KEY_CLOUD2 -H=172.17.0.15:2376  version
+   - docker --tlsverify  --tlscacert=$DOCKER_CA_CLOUD2 --tlscert=$DOCKER_CERT_CLOUD2 --tlskey=$DOCKER_KEY_CLOUD2 -H=172.17.0.1:2376  version
   script:
     - echo "Deploy job"
