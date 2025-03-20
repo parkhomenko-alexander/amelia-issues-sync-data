@@ -24,7 +24,7 @@ deploy_job:
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_TLS_VERIFY: 1
-    DOCKER_HOST: "tcp://89.169.147.75:2376"
+    DOCKER_HOST: "tcp://172.17.0.1:2376"
     DOCKER_CERT_PATH: /cert
   before_script:
   # - mv $ENV .env
