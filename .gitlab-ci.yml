@@ -10,7 +10,7 @@ build_image:
   stage: build
   tags: [docker]
   script:
-   - cat config.json > /kaniko/.docker/config.json
+   - cat $docker_hub > /kaniko/.docker/config.json
    - /kaniko/executor
       --context . 
       --dockerfile=Dockerfile 
