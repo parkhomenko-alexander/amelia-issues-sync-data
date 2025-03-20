@@ -1,0 +1,27 @@
+services:
+
+  amelia-redis-dev:
+    image: redis
+    container_name: amelia-redis-dev
+    restart: unless-stopped
+    command: --port 6380
+    expose:
+      - 6380
+
+
+  amelia-db-dev:
+    image: postgres:15
+    container_name: amelia-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: amelia
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_USER: postgres
+      PGPORT: 5440
+    expose:
+      - "5440"
+    ports:
+      - "5440:5440"
+    volumes:
+      - ./postgresql:/var/lib/postgresql/data
+      - ./db_dump.sql:/docker-entrypoint-initdb.d/db_dump.sql
