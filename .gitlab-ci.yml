@@ -49,6 +49,7 @@ deploy_job:
   script:
     - echo "Deploy job"
     - chmod 400 /builds/parhom/amelia-issues-sync-data.tmp/ID_RSA
+    - eval "$(ssh-agent -s)"
     - ssh-add /builds/parhom/amelia-issues-sync-data.tmp/ID_RSA
     - ls -la /builds/parhom/amelia-issues-sync-data.tmp/ID_RSA
     - ssh -v -i $ID_RSA -o StrictHostKeyChecking=no $SSH_USER@$HOST_CLOUD2 "pwd && ls -la"
