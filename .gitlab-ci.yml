@@ -48,7 +48,7 @@ deploy_job:
     - apk update && apk add openssh-client
     - echo $ID_RSA
     - echo "SSH setup complete"s
-    - ssh -i $CLOUD2_KEY -o StrictHostKeyChecking=no $cloud2 "ls -la ./fefumap 
+    - ssh -i $CLOUD2_KEY -o StrictHostKeyChecking=no $cloud2 "ls -la ./fefumap"
   script:
     - echo "Deploy job"
     - chmod 400 /builds/parhom/amelia-issues-sync-data.tmp/ID_RSA
