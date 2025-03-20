@@ -22,10 +22,11 @@ deploy_job:
   image: docker
   tags: [cloud2]
   before_script:
-   - docker --tlsverify \
-        --tlscacert=$DOCKER_CA_CLOUD2 \
-        --tlscert=$DOCKER_CERT_CLOUD2 \
-        --tlskey=$DOCKER_KEY_CLOUD2 \
-        -H=172.17.0.15:2376
+   - docker ps -a
+  #  --tlsverify \
+  #       --tlscacert=$DOCKER_CA_CLOUD2 \
+  #       --tlscert=$DOCKER_CERT_CLOUD2 \
+  #       --tlskey=$DOCKER_KEY_CLOUD2 \
+  #       -H=172.17.0.15:2376
   script:
     - echo "Deploy job"
