@@ -1,6 +1,8 @@
 stages:
   - build
   - deploy
+variables:
+  cloud2: "kozlovis@172.17.0.1"
 
 # build_image:
 #   interruptible: true
