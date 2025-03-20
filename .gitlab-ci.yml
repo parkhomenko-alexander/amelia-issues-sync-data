@@ -17,23 +17,36 @@ stages:
 #       --destination fefuboard/amelia-issues-backend-dev:latest
 
 
+# deploy_job:
+#   stage: deploy
+#   image: docker
+#   tags: [cloud2]
+#   variables:
+#     DOCKER_TLS_CERTDIR: ""
+#     DOCKER_TLS_VERIFY: 1
+#     DOCKER_HOST: "tcp://89.169.147.75:2376"
+#     DOCKER_CERT_PATH: /cert
+#   # before_script:
+#   # # - mv $ENV .env
+#   # # - chmod og= $CLOUD2_KEY
+#   # - mkdir -p /cert && mv $DOCKER_CA_CLOUD2 /cert/ca.pem && mv $DOCKER_KEY_CLOUD2 /cert/key.pem  && mv $DOCKER_CERT_CLOUD2  /cert/cert.pem 
+#   # - ls /cert
+#   script:
+#   # - ping 89.169.147.75
+#   # - chmod 400 /cert/key.pem
+#   # - docker --tlsverify  ps -a
+#   - docker compose --tlsverify  -f docker-compose.yaml up -d
+
 deploy_job:
   stage: deploy
-  image: docker
-  tags: [cloud2]
-  variables:
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_HOST: "tcp://89.169.147.75:2376"
-    DOCKER_CERT_PATH: /cert
+  image: docker:24.0.5
+  tags: [docker]
+  needs: [build_job]
   before_script:
-  # - mv $ENV .env
-  # - chmod og= $CLOUD2_KEY
-  - mkdir -p /cert && mv $DOCKER_CA_CLOUD2 /cert/ca.pem && mv $DOCKER_KEY_CLOUD2 /cert/key.pem  && mv $DOCKER_CERT_CLOUD2  /cert/cert.pem 
-  - ls /cert
+    - apk update && apk add openssh-client
+    - echo $ID_RSA
+    - echo "SSH setup complete"s
   script:
-  - ping 89.169.147.75
-  - chmod 400 /cert/key.pem
-  - docker --tlsverify  ps -a
-  - docker compose --tlsverify  -f docker-compose.yaml up -d
+    - echo "Deploy job"
+    - ssh -v -i $ID_RSA -o StrictHostKeyChecking=no $SSH_USER@$HOST_CLOUD2 "pwd && ls -la"
 
