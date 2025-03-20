@@ -32,6 +32,7 @@ deploy_job:
   - mkdir -p /cert && mv $DOCKER_CA_CLOUD2 /cert/ca.pem && mv $DOCKER_KEY_CLOUD2 /cert/key.pem  && mv $DOCKER_CERT_CLOUD2  /cert/cert.pem 
   - ls /cert
   script:
+  - ping 172.17.0.1
   - chmod 400 /cert/key.pem
   - docker --tlsverify  ps -a
   - docker compose --tlsverify  -f docker-compose.yaml up -d
