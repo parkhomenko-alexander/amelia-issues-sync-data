@@ -19,7 +19,7 @@ build_image:
 
 deploy_job:
   stage: deploy
-  image: alpine:latest
+  image: docker
   tags: [cloud2]
   before_script:
    - docker --tlsverify \
