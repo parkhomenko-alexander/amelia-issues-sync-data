@@ -30,5 +30,8 @@ deploy_job:
   # - mv $ENV .env
   # - chmod og= $CLOUD2_KEY
   - mkdir -p /cert && mv $DOCKER_CA_CLOUD2 /cert/ca.pem && mv $DOCKER_KEY_CLOUD2 /cert/key.pem  && mv $DOCKER_CERT_CLOUD2  /cert/cert.pem 
+  - ls /cert
   script:
+  - docker ps -a
   - docker compose -f docker-compose.yaml up -d
+
