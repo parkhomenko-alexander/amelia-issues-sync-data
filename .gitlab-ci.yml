@@ -41,7 +41,7 @@ deploy_job:
   stage: deploy
   image: docker:24.0.5
   tags: [docker]
-  needs: [build_job]
+  # needs: [build_job]
   before_script:
     - apk update && apk add openssh-client
     - echo $ID_RSA
