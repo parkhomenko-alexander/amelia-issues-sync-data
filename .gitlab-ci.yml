@@ -24,7 +24,7 @@ deploy_job:
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_TLS_VERIFY: 1
-    DOCKER_HOST: "tcp://172.17.0.1:2376"
+    DOCKER_HOST: "tcp://89.169.147.75:2376"
     DOCKER_CERT_PATH: /cert
   before_script:
   # - mv $ENV .env
@@ -32,7 +32,7 @@ deploy_job:
   - mkdir -p /cert && mv $DOCKER_CA_CLOUD2 /cert/ca.pem && mv $DOCKER_KEY_CLOUD2 /cert/key.pem  && mv $DOCKER_CERT_CLOUD2  /cert/cert.pem 
   - ls /cert
   script:
-  - ping 172.17.0.1
+  - ping 89.169.147.75
   - chmod 400 /cert/key.pem
   - docker --tlsverify  ps -a
   - docker compose --tlsverify  -f docker-compose.yaml up -d
