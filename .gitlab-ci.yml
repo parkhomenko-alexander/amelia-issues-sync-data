@@ -1,0 +1,32 @@
+stages:
+  - build
+  - deploy
+
+build_image:
+  interruptible: true
+  image: 
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  stage: build
+  tags: [docker]
+  script:
+   - cat config.json > /kaniko/.docker/config.json
+   - /kaniko/executor
+      --context . 
+      --dockerfile=Dockerfile 
+      --destination fefuboard/amelia-issues-backend-dev:latest
+
+
+deploy_job:
+  stage: deploy
+  image: alpine:latest
+  tags: [cloud2]
+  needs: [build_job]
+  before_script:
+   - docker --tlsverify \
+        --tlscacert=$DOCKER_CA_CLOUD2 \
+        --tlscert=$DOCKER_CERT_CLOUD2 \
+        --tlskey=$DOCKER_KEY_CLOUD2 \
+        -H=172.17.0.15:2376
+  script:
+    - echo "Deploy job"
