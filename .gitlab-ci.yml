@@ -21,7 +21,6 @@ deploy_job:
   stage: deploy
   image: alpine:latest
   tags: [cloud2]
-  needs: [build_job]
   before_script:
    - docker --tlsverify \
         --tlscacert=$DOCKER_CA_CLOUD2 \
