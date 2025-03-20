@@ -21,8 +21,14 @@ deploy_job:
   stage: deploy
   image: docker
   tags: [cloud2]
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_HOST: "tcp://172.17.0.1:2376"
+    DOCKER_CERT_PATH: /cert
   before_script:
-   - cat $DOCKER_CA_CLOUD2
-   - docker --tlsverify  --tlscacert=$DOCKER_CA_CLOUD2 --tlscert=$DOCKER_CERT_CLOUD2 --tlskey=$DOCKER_KEY_CLOUD2 -H=172.17.0.1:2376  version
+  # - mv $ENV .env
+  # - chmod og= $CLOUD2_KEY
+  - mkdir -p /cert && mv $DOCKER_CA_CLOUD2 /cert/ca.pem && mv $DOCKER_KEY_CLOUD2 /cert/key.pem  && mv $DOCKER_CERT_CLOUD2  /cert/cert.pem 
   script:
-    - echo "Deploy job"
+  - docker compose -f docker-compose.yaml up -d
