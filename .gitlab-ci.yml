@@ -1,22 +1,21 @@
 stages:
   - build
   - deploy
-variables:
-  cloud2: "kozlovis@172.17.0.1"
 
-# build_image:
-#   interruptible: true
-#   image: 
-#     name: gcr.io/kaniko-project/executor:v1.23.2-debug
-#     entrypoint: [""]
-#   stage: build
-#   tags: [docker]
-#   script:
-#    - cat $docker_hub > /kaniko/.docker/config.json
-#    - /kaniko/executor
-#       --context . 
-#       --dockerfile=Dockerfile 
-#       --destination fefuboard/amelia-issues-backend-dev:latest
+
+build_image-dev:
+  interruptible: true
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  stage: build
+  tags: [docker]
+  script:
+   - cat $docker_hub > /kaniko/.docker/config.json
+   - /kaniko/executor
+      --context .
+      --dockerfile=Dockerfile
+      --destination fefuboard/amelia-issues-backend-dev:latest
 
 
 # deploy_job:
@@ -31,7 +30,7 @@ variables:
 #   # before_script:
 #   # # - mv $ENV .env
 #   # # - chmod og= $CLOUD2_KEY
-#   # - mkdir -p /cert && mv $DOCKER_CA_CLOUD2 /cert/ca.pem && mv $DOCKER_KEY_CLOUD2 /cert/key.pem  && mv $DOCKER_CERT_CLOUD2  /cert/cert.pem 
+#   # - mkdir -p /cert && mv $DOCKER_CA_CLOUD2 /cert/ca.pem && mv $DOCKER_KEY_CLOUD2 /cert/key.pem  && mv $DOCKER_CERT_CLOUD2  /cert/cert.pem
 #   # - ls /cert
 #   script:
 #   # - ping 89.169.147.75
@@ -48,12 +47,10 @@ deploy_job:
     - apk update && apk add openssh-client
     - echo $ID_RSA
     - echo "SSH setup complete"s
-    # - ssh -i $CLOUD2_KEY -o StrictHostKeyChecking=no $cloud2 "ls -la ./fefumap"
   script:
     - echo "Deploy job"
     - chmod 400 /builds/parhom/amelia-issues-sync-data.tmp/ID_RSA
     - eval "$(ssh-agent -s)"
     - ssh-add /builds/parhom/amelia-issues-sync-data.tmp/ID_RSA
-    - ls -la /builds/parhom/amelia-issues-sync-data.tmp/ID_RSA 
     - ssh -v -i $ID_RSA -o StrictHostKeyChecking=no $SSH_USER@$HOST_CLOUD2 "pwd && ls -la"
 
