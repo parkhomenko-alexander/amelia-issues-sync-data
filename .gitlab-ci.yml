@@ -3,19 +3,19 @@ stages:
   - deploy
 
 
-build_image-dev:
-  interruptible: true
-  image:
-    name: gcr.io/kaniko-project/executor:v1.23.2-debug
-    entrypoint: [""]
-  stage: build
-  tags: [docker]
-  script:
-   - cat $docker_hub > /kaniko/.docker/config.json
-   - /kaniko/executor
-      --context .
-      --dockerfile=Dockerfile
-      --destination fefuboard/amelia-issues-backend-dev:latest
+# build_image-dev:
+#   interruptible: true
+#   image:
+#     name: gcr.io/kaniko-project/executor:v1.23.2-debug
+#     entrypoint: [""]
+#   stage: build
+#   tags: [docker]
+#   script:
+#    - cat $docker_hub > /kaniko/.docker/config.json
+#    - /kaniko/executor
+#       --context .
+#       --dockerfile=Dockerfile
+#       --destination fefuboard/amelia-issues-backend-dev:latest
 
 
 # deploy_job:
@@ -53,5 +53,6 @@ deploy_job:
     - eval "$(ssh-agent -s)"
     - ssh-add /builds/parhom/amelia-issues-sync-data.tmp/ID_RSA
     - ssh -v -i $ID_RSA -o StrictHostKeyChecking=no $SSH_USER@$HOST_CLOUD2 "pwd && ls -la &&
-      docker login -u $DOCKERHUB_USER --password DOCKERHUB_PAS"
+      docker login -u $DOCKERHUB_USER --password-stdin DOCKERHUB_PAS && cd /home/kozlovis/amelia-issues-dev &&
+      docker compose up -d --force-recreate"
 
