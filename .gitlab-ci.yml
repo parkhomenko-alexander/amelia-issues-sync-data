@@ -52,7 +52,10 @@ deploy_job:
     - chmod 400 /builds/parhom/amelia-issues-sync-data.tmp/ID_RSA
     - eval "$(ssh-agent -s)"
     - ssh-add /builds/parhom/amelia-issues-sync-data.tmp/ID_RSA
-    - ssh -v -i $ID_RSA -o StrictHostKeyChecking=no $SSH_USER@$HOST_CLOUD2 "pwd && ls -la &&
-      docker login -u $DOCKERHUB_USER --password-stdin DOCKERHUB_PAS && cd /home/kozlovis/amelia-issues-dev &&
-      docker compose up -d --force-recreate"
+    - ssh -i $ID_RSA -o StrictHostKeyChecking=no $SSH_USER@$HOST_CLOUD2 "
+      pwd && ls -la &&
+      echo '$DOCKERHUB_PAS' | docker login -u fefuboard --password-stdin &&
+      cd /home/kozlovis/amelia-issues-dev &&
+      docker compose up -d --force-recreate
+      "
 
