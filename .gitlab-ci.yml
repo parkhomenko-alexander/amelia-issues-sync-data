@@ -3,19 +3,19 @@ stages:
   - deploy
 
 
-# build_image-dev:
-#   interruptible: true
-#   image:
-#     name: gcr.io/kaniko-project/executor:v1.23.2-debug
-#     entrypoint: [""]
-#   stage: build
-#   tags: [docker]
-#   script:
-#    - cat $docker_hub > /kaniko/.docker/config.json
-#    - /kaniko/executor
-#       --context .
-#       --dockerfile=Dockerfile
-#       --destination fefuboard/amelia-issues-backend-dev:latest
+build_image-dev:
+  interruptible: true
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  stage: build
+  tags: [docker]
+  script:
+   - cat $docker_hub > /kaniko/.docker/config.json
+   - /kaniko/executor
+      --context .
+      --dockerfile=Dockerfile
+      --destination fefuboard/amelia-issues-backend-dev:latest
 
 
 # deploy_job:
