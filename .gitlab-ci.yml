@@ -3,13 +3,15 @@ stages:
   - deploy
 
 
-build_image-dev:
+build_image_dev:
   interruptible: true
   image:
     name: gcr.io/kaniko-project/executor:v1.23.2-debug
     entrypoint: [""]
   stage: build
   tags: [docker]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "dev"'
   script:
    - cat $docker_hub > /kaniko/.docker/config.json
    - /kaniko/executor
@@ -42,7 +44,8 @@ deploy_job:
   stage: deploy
   image: docker:24.0.5
   tags: [docker]
-  # needs: [build_job]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "dev"'
   before_script:
     - apk update && apk add openssh-client
     - echo $ID_RSA
