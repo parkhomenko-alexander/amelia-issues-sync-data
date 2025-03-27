@@ -68,7 +68,7 @@ def  filters_dep(
         priorities_id=priorities_id,
         pagination=Pagination(
             limit=pagination_limit,
-            ofset=pagination_ofset
+            offset=pagination_ofset
         ),
         current_statuses=current_statuses
     )

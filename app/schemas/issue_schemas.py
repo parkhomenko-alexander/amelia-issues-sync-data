@@ -1,11 +1,16 @@
+import hashlib
+import json
 import re
 from datetime import datetime, timedelta
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import Field, field_validator, validator
 
 from app.schemas.general import BaseUserModel, GeneralAmeliaSchema
+from app.utils.redis_manager import CachePrefixes
 
+AU_TZ = ZoneInfo("Australia/Sydney")
 
 class IssuePostSchema(GeneralAmeliaSchema):
     description: str | None = Field(None)
@@ -53,6 +58,11 @@ def start_date() -> datetime:
 def end_date() -> datetime:
     return datetime.now() + timedelta(days=10)
 
+def start_time_example() -> datetime:
+    return datetime.fromisoformat("2024-08-05T00:00:00")
+
+def end_time_example() -> datetime:
+    return datetime.fromisoformat("2024-09-05T00:00:00")
 
 class IssueReportDataSchema(BaseUserModel):
     start_date: datetime = Field(description="123.45") 
@@ -72,10 +82,21 @@ class CreationTime(BaseUserModel):
 
     @field_validator("start_date", "end_date", mode="before")
     @classmethod
-    def replace_null_with_default(cls, value, field):
+    def prepare_datetime(cls, value, field):
         if value is None:
-            return start_date() if field.field_name == "start_date" else end_date()
+            value = start_date() if field.field_name == "start_date" else end_date()
+
+        if isinstance(value, str):
+            value = datetime.fromisoformat(value)
+
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=AU_TZ)
+            value = value.astimezone(ZoneInfo("UTC"))
+
         return value
+
+
 
 class TransitionStatuses(BaseUserModel):
     start_date: datetime = Field(
@@ -88,47 +109,71 @@ class TransitionStatuses(BaseUserModel):
         examples=["2024-09-30T00:00:00"],
         description="End date and time in ISO format."
     )
-    statuses: list[str] = Field(
-        default_factory=list,
+    statuses: list[str] | None = Field(
+        default=None,
         examples=[["взята в работу"]],
         description="Buildings"
     )
 
     @field_validator("start_date", "end_date", mode="before")
     @classmethod
-    def replace_null_with_default(cls, value, field):
+    def prepare_datetime(cls, value, field):
         if value is None:
-            return start_date() if field.field_name == "start_date" else end_date()
+            value = start_date() if field.field_name == "start_date" else end_date()
+
+        if isinstance(value, str):
+            value = datetime.fromisoformat(value)
+
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=AU_TZ)
+            value = value.astimezone(ZoneInfo("UTC"))
+
         return value
 
+
 class Place(BaseUserModel):
-    buildings_id: list[int] = Field(
-        default_factory=list,
+    buildings_id: list[int] | None = Field(
+        default_factory=None,
         examples=[[45,46]],
         description="Buildings"
     )
-    rooms_id: list[int] = Field(
+    rooms_id: list[int] | None = Field(
         default_factory=list,
         examples=[[18000, 18001]],
         description="Rooms"
     )
 
+    @field_validator("buildings_id", "rooms_id", mode="before")
+    @classmethod
+    def empty_list_to_none(cls, value):
+        if isinstance(value, list) and len(value) == 0:
+            return None
+        return value
+
 class Work(BaseUserModel):
-    services_id: list[int] = Field(
+    services_id: list[int] | None = Field(
         default_factory=list,
         examples=[[7, 10]],
         description="Services"
     )
 
-    work_categories_id: list[int] = Field(
+    work_categories_id: list[int] | None = Field(
         default_factory=list,
         examples=[[200, 399]],
         description="Work categories"
     )
 
+    @field_validator("services_id", "work_categories_id", mode="before")
+    @classmethod
+    def empty_list_to_none(cls, value):
+        if isinstance(value, list) and len(value) == 0:
+            return None
+        return value
+
 class Pagination(BaseUserModel):
     limit: int = Field(50, ge=10, le=10000)
-    ofset: int = Field(0, ge=0)
+    offset: int = Field(0, ge=0)
 
 
 def transition_statuses_factory() -> TransitionStatuses:
@@ -158,7 +203,7 @@ def work_factory() -> Work:
 def pagination_factory() -> Pagination:
     return Pagination(
         limit=50,
-        ofset=1
+        offset=1
     ) 
 
 class IssuesFiltersSchema(BaseUserModel):
@@ -177,22 +222,46 @@ class IssuesFiltersSchema(BaseUserModel):
         default_factory=work_factory,
         description="Work res"
     )
-    urgency: list[str] = Field(
+    urgency: list[str] | None = Field(
         examples=[],
-        default_factory=list
+        default=None
     )
-    priorities_id: list[int] = Field(
-        default_factory=list
+    priorities_id: list[int] | None = Field(
+        default=None
     )
     pagination: Pagination = Field(
         default_factory=pagination_factory
     )
-    current_statuses: list = Field(
-        default_factory=list,
+    current_statuses: list | None = Field(
+        default=None,
         examples=[["новая", "принята"]],
     )
-    # fields_in_report: list[str]
-    
+
+    @field_validator("urgency", "priorities_id", "current_statuses", mode="before")
+    @classmethod
+    def empty_list_to_none(cls, value):
+        if isinstance(value, list) and not value:
+            return None
+        return value
+
+
+    @staticmethod
+    def build_cache_key(filters: "IssuesFiltersSchema", debug: bool = False) -> str:
+        dumped = json.dumps(
+            filters.model_dump(exclude={"pagination"}),
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str
+        )
+
+        prefix = CachePrefixes.ISSUES.value
+
+        if debug:
+            return f"{prefix}:count_filtered_issues_{dumped}"
+
+        hashed = hashlib.sha256(dumped.encode("utf-8")).hexdigest()
+        return f"{prefix}:count_filtered_issues_{hashed}"
+
 class FilteredIssue(BaseUserModel):
     id: int
     service_title: str

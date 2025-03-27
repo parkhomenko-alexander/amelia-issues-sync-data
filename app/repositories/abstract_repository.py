@@ -6,7 +6,8 @@ from sqlalchemy import and_, delete, func, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import count
 
-from app.db.base_model import Base, BaseMixin, BaseMixinAmelia 
+from app.db.base_model import Base, BaseMixin, BaseMixinAmelia
+from app.utils.benchmark import perfomance_timer 
 
 T = TypeVar('T', bound=BaseMixin)
 TA = TypeVar('TA', bound=BaseMixinAmelia)
@@ -124,6 +125,7 @@ class SQLAlchemyRepository(AbstractRepository[TA]):
         c = res.scalar_one()
         return c
 
+    @perfomance_timer
     async def get_filtered_and(self, **kwargs) -> int:
         subq = (
             select(self.model.id)

@@ -51,7 +51,7 @@ async def issues_report_ver2(
     redis: RedisManagerDep,
     issues_filters: IssuesFiltersSchema,
     background_tasks: BackgroundTasks
-):  
+):
     try:
         task_id = str(uuid4())
         logger.info(task_id)
@@ -60,7 +60,7 @@ async def issues_report_ver2(
         background_tasks.add_task(report_service.generate_issues_report_ver2,issues_filters, task_id)
 
         return {"task_id": task_id, "status_url": f"/issue-report-file-status/{task_id}"}
-        
+
     except Exception as error:
         logger.error(error)
         return error

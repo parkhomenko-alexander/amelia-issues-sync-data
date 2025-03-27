@@ -1,13 +1,15 @@
 from functools import wraps
 from time import time
-from typing import Any, Callable, Coroutine
+from typing import Any, Awaitable, Callable, Coroutine, ParamSpec, TypeVar
 
 from loguru import logger
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def perfomance_timer(func: Callable) -> Callable[..., Coroutine[Any, Any, Any]]:
+def perfomance_timer(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
     @wraps(func)
-    async def wrapper(*args, **kwargs) -> Coroutine[Any, Any, Any]:
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         start_time = time()
         result = await func(*args, **kwargs)
         end_time = time()

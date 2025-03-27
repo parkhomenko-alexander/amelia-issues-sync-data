@@ -8,6 +8,8 @@ import xlsxwriter
 from loguru import logger
 from sqlalchemy import Row
 
+from app.dto.issues_filter_dto import IssueFilterDTO
+from app.dto.mappers.issue_filters_mapper import map_filters_to_dto
 from app.schemas.issue_schemas import IssuesFiltersSchema
 from app.services.services_helper import with_uow
 from app.utils.benchmark import perfomance_timer
@@ -35,10 +37,10 @@ class ReportService:
         
         def format_date(dt):
             return dt.strftime('%Y-%m-%d %H:%M:%S') if dt else ""
-        
+
         await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status", "processing")
 
-        output_file = await self.get_report_path() + f"/issues_report_{task_id}.xlsx"  # Уникальный файл для задачи
+        output_file = await self.get_report_path() + f"/issues_report_{task_id}.xlsx"
         workbook = xlsxwriter.Workbook(output_file)
         worksheet = workbook.add_worksheet("Зявки")
         
@@ -57,43 +59,29 @@ class ReportService:
         current_time = datetime.now()
 
         try:
-            match filters.transition.statuses:
-                case []:
-                    statuses = await self.uow.statuses_history_repo.get_unique_statuses()
-                case _:
-                    statuses = filters.transition.statuses
-            
+            if filters.transition.statuses == []:
+                filters.transition.statuses = await self.uow.statuses_history_repo.get_unique_statuses()
+
             row_ind = 1
-            ids = await self.uow.issues_repo.get_issue_ids_with_filters_for_report_ver2(
-                filters.creation.start_date,
-                filters.creation.end_date,
-                filters.transition.start_date,
-                filters.transition.end_date,
-                statuses,
-                filters.place.buildings_id,
-                filters.work.services_id,
-                filters.work.work_categories_id,
-                filters.place.rooms_id,
-                filters.priorities_id,
-                filters.urgency,
-                limit = 1000000,
-                page = 0,
-                current_statuses=filters.current_statuses
+            filters_dto: IssueFilterDTO = map_filters_to_dto(filters)
+            
+            ids = await self.uow.issues_repo.get_issue_ids_with_filters_for_report_ver3(
+                filters_dto
             )
-            ids = sorted(ids, reverse=True)
+            # ids = sorted(ids, reverse=True)
             if ids != []:
-                
+
                 if len(ids) > 50_000:
                     chunks = self.split_list_into_chunks(ids, chunk_size=20000)
                 else:
                     chunks = [ids]
-                t1 = datetime.now()
+
                 for chunk in chunks:
                     rows: Sequence[Row] = await self.uow.issues_repo.get_filtered_issues_for_report_ver4(
                         chunk
                     )
 
-                    for row in reversed(rows):
+                    for row in rows:
                         end_date = close_date = ""
                         
                         if row.last_status == "исполнена"  or row.last_status == "отказано":
@@ -145,8 +133,6 @@ class ReportService:
                 worksheet.set_column(13, 13, prior_len)
                 worksheet.set_column(14, 14, prior_len)
                 worksheet.set_column(15, 15, prior_len)
-                t2 = datetime.now()
-                logger.info((t2-t1).total_seconds())
             workbook.close()
             await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:status", "completed")
             await self.redis_manager.set_cache(CachePrefixes.TASKS_INFO, f"{task_id}:file_path", output_file)

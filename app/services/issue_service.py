@@ -8,22 +8,30 @@ from loguru import logger
 from numpy import sort
 from openpyxl import Workbook
 from sqlalchemy import Row
+from yaml import TagToken
 
 from app.celery.helpers import ShortIssue
 from app.db.models import work_category
+from app.dto.issues_filter_dto import IssueFilterDTO
+from app.dto.mappers.issue_filters_mapper import map_filters_to_dto
 from app.schemas.issue_schemas import (FilteredIssue, FilteredIssuesGetSchema,
                                        IssueFilters, IssuePostSchema,
                                        IssuesFiltersSchema, ThinDict, WorkCat)
 from app.schemas.status_schemas import HistoryStatusRecord
 from app.services.services_helper import with_uow
 from app.utils.benchmark import perfomance_timer
+from app.utils.redis_manager import CachePrefixes, RedisManager
 from app.utils.unit_of_work import AbstractUnitOfWork
 
+from time import time
 
 class IssueService():
-    def __init__(self, uow: AbstractUnitOfWork):
+    def __init__(self,
+                 uow: AbstractUnitOfWork,
+                 redis: RedisManager = RedisManager()):
         self.uow = uow
-    
+        self.redis = redis
+
     @with_uow
     async def bulk_insert(self, elements_post: list[IssuePostSchema]) -> int:
         """
@@ -205,56 +213,46 @@ class IssueService():
                  
             return res_dict
 
-    @perfomance_timer
     @with_uow
+    @perfomance_timer
     async def get_filtered_issues(
         self,
         filters: IssuesFiltersSchema
     ) -> FilteredIssuesGetSchema:
         try:
-            match filters.transition.statuses:
-                case []:
-                    statuses = await self.uow.statuses_history_repo.get_unique_statuses()
-                case _:
-                    statuses = filters.transition.statuses
+            if filters.transition.statuses == []:
+                filters.transition.statuses = await self.uow.statuses_history_repo.get_unique_statuses()
 
-            total_count: int = await self.uow.issues_repo.get_filtered_and(facility_id=2)
-            filtered_count: int | None = await self.uow.issues_repo.get_count_issues_with_filters_for_report_ver2(
-                filters.creation.start_date,
-                filters.creation.end_date,
-                filters.transition.start_date,
-                filters.transition.end_date,
-                statuses,
-                filters.place.buildings_id,
-                filters.work.services_id,
-                filters.work.work_categories_id,
-                filters.place.rooms_id,
-                filters.priorities_id,
-                filters.urgency,
-                filters.current_statuses
-            )
+            total_count_cache = await self.redis.get_cache(CachePrefixes.ISSUES, "total")
+            if not total_count_cache:
+                total_count: int = await self.uow.issues_repo.get_filtered_and(facility_id=2)
+                await self.redis.set_cache(CachePrefixes.ISSUES, "total", str(total_count), 600)
+            else:
+                total_count = int(total_count_cache)
 
-            iss_ids = await self.uow.issues_repo.get_issue_ids_with_filters_for_report_ver2(
-                filters.creation.start_date,
-                filters.creation.end_date,
-                filters.transition.start_date,
-                filters.transition.end_date,
-                statuses,
+            filtered_issues_count_key = IssuesFiltersSchema.build_cache_key(filters)
+            filters_dto: IssueFilterDTO = map_filters_to_dto(filters)
+            filtered_count_cache = await self.redis.get_cache(CachePrefixes.ISSUES, filtered_issues_count_key)
+            if not filtered_count_cache:
+                filtered_count: int = await self.uow.issues_repo.get_count_issues_with_filters_for_report3(
+                    filters_dto
+                )
+                if filtered_count == 0:
+                    res = FilteredIssuesGetSchema(
+                        filtered_count=0,
+                        total_count=total_count,
+                        issues=[]
+                    )
+                    return res
+                await self.redis.set_cache(CachePrefixes.ISSUES, filtered_issues_count_key, str(filtered_count), 600)
+            else:
+                filtered_count = int(filtered_count_cache)
 
-                filters.place.buildings_id,
-                filters.work.services_id,
-                filters.work.work_categories_id,
-                filters.place.rooms_id,
-                filters.priorities_id,
-                filters.urgency,
-
-                filters.pagination.limit,
-                filters.pagination.ofset,
-                filters.current_statuses
+            iss_ids = await self.uow.issues_repo.get_issue_ids_with_filters_for_api_ver3(
+                filters_dto
             )
             issues: list[FilteredIssue] = []
 
-            iss_ids = sorted(iss_ids, reverse=True)
             if iss_ids == [] :
                 res = FilteredIssuesGetSchema(
                     filtered_count=filtered_count or 0,
@@ -264,7 +262,7 @@ class IssueService():
                 return res
 
             rows = await self.uow.issues_repo.get_filtered_issues_for_report_ver4(iss_ids)
-            for row in reversed(rows):
+            for row in rows:
                 end_date = close_date = None
 
                 if row.last_status == "исполнена" or row.last_status == "отказано":
@@ -312,7 +310,7 @@ class IssueService():
                 issues=issues
             )
             return res
-             
+
         except Exception as e:
             logger.error(e)
             logger.error(traceback.format_exc())
